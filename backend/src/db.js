@@ -17,8 +17,9 @@ const SQLITE_NOTIFY_DUE_SQL = `
     AND datetime(m.due_date || ' ' || COALESCE(m.due_time, '09:00')) <= datetime('now', 'localtime')
 `;
 
-const INIT_TIMEOUT_MS = 30000;
-const CONNECT_RETRIES = 3;
+const onVercel = !!process.env.VERCEL;
+const INIT_TIMEOUT_MS = onVercel ? 25000 : 30000;
+const CONNECT_RETRIES = onVercel ? 2 : 3;
 
 const useSupabase = !!(process.env.DATABASE_URL || process.env.SUPABASE_DB_URL);
 
@@ -36,11 +37,36 @@ function loadSqlite() {
 }
 
 function getConnectionString() {
-  let url = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
-  if (!url.includes('sslmode=')) {
-    url += `${url.includes('?') ? '&' : '?'}sslmode=require`;
+  const raw = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
+  if (!raw) return raw;
+
+  try {
+    const parsed = new URL(raw);
+    const params = parsed.searchParams;
+
+    if (!params.has('sslmode')) {
+      params.set('sslmode', 'require');
+    }
+
+    const usesPooler = parsed.hostname.includes('pooler.supabase.com');
+    if (usesPooler || parsed.port === '6543') {
+      if (!params.has('pgbouncer')) {
+        params.set('pgbouncer', 'true');
+      }
+    }
+
+    parsed.search = params.toString();
+    return parsed.toString();
+  } catch {
+    let url = raw;
+    if (!url.includes('sslmode=')) {
+      url += `${url.includes('?') ? '&' : '?'}sslmode=require`;
+    }
+    if (url.includes('pooler.supabase.com') && !url.includes('pgbouncer=')) {
+      url += `${url.includes('?') ? '&' : '?'}pgbouncer=true`;
+    }
+    return url;
   }
-  return url;
 }
 
 function getConnectionDiagnostics() {
@@ -73,6 +99,7 @@ function formatDbError(error) {
     'Supabase プロジェクトが一時停止していないか確認（ダッシュボードで Restore）',
     'Database → Network で IP 制限が有効になっていないか確認',
     'Connect → Transaction pooler（port 6543）の URI を使用しているか確認',
+    '接続文字列に ?pgbouncer=true が付いているか確認',
     'ユーザー名が postgres.[project-ref] 形式か確認',
     'パスワードの特殊文字は URL エンコードされているか確認',
   ];
@@ -80,16 +107,29 @@ function formatDbError(error) {
   return `${message} | host=${diag.host || 'unknown'} port=${diag.port || 'unknown'} | ${hints.join(' / ')}`;
 }
 
+async function closePostgres() {
+  if (!pgClient) return;
+  try {
+    await pgClient.end({ timeout: 5 });
+  } catch {
+    // ignore close errors on stale connections
+  }
+  pgClient = null;
+}
+
 async function connectPostgres() {
   const postgres = require('postgres');
+  await closePostgres();
+
   const connectionString = getConnectionString();
-  const onVercel = !!process.env.VERCEL;
   pgClient = postgres(connectionString, {
     ssl: 'require',
     max: 1,
-    idle_timeout: onVercel ? 5 : 10,
-    connect_timeout: onVercel ? 10 : 25,
+    idle_timeout: onVercel ? 10 : 20,
+    connect_timeout: onVercel ? 15 : 25,
     prepare: false,
+    fetch_types: false,
+    application_name: 'mybutler',
   });
   await pgClient`SELECT 1`;
 }
@@ -261,7 +301,7 @@ async function exec(sql) {
 }
 
 async function ping() {
-  await initPromise;
+  await ensureInitStarted();
   if (useSupabase) {
     await pgClient`SELECT 1`;
     return { ok: true, database: 'supabase' };
@@ -275,6 +315,7 @@ function getNotifyDueSql() {
 }
 
 function startInit() {
+  initError = null;
   initPromise = withTimeout(
     initDatabase(),
     INIT_TIMEOUT_MS,
@@ -286,10 +327,17 @@ function startInit() {
   return initPromise;
 }
 
-initPromise = startInit();
+function ensureInitStarted() {
+  if (!initPromise) {
+    startInit();
+  }
+  return initPromise;
+}
 
 module.exports = {
-  ready: initPromise,
+  get ready() {
+    return ensureInitStarted();
+  },
   initDatabase: startInit,
   all,
   get,
