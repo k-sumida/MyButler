@@ -11,7 +11,9 @@ async function request(path, options = {}) {
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'リクエストに失敗しました');
+  if (!res.ok) {
+    throw new Error(data.error || data.detail || `リクエストに失敗しました (${res.status})`);
+  }
   return data;
 }
 
