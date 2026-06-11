@@ -83,11 +83,12 @@ function formatDbError(error) {
 async function connectPostgres() {
   const postgres = require('postgres');
   const connectionString = getConnectionString();
+  const onVercel = !!process.env.VERCEL;
   pgClient = postgres(connectionString, {
     ssl: 'require',
     max: 1,
-    idle_timeout: 10,
-    connect_timeout: 25,
+    idle_timeout: onVercel ? 5 : 10,
+    connect_timeout: onVercel ? 10 : 25,
     prepare: false,
   });
   await pgClient`SELECT 1`;
@@ -151,6 +152,12 @@ async function initDatabase() {
     await connectWithRetry();
     await ensurePgTables();
     return;
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error(
+      'Vercel に DATABASE_URL が未設定です。Supabase の Transaction pooler（port 6543）接続文字列を環境変数に追加してください。'
+    );
   }
 
   const Sqlite = loadSqlite();

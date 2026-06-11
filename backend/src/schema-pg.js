@@ -48,6 +48,8 @@ const NOTIFY_DUE_SQL = `
     AND m.notified = 0
     AND u.line_user_id IS NOT NULL
     AND u.line_user_id != ''
+    AND m.due_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    AND COALESCE(m.due_time, '09:00') ~ '^[0-9]{2}:[0-9]{2}$'
     AND to_timestamp(m.due_date || ' ' || COALESCE(m.due_time, '09:00'), 'YYYY-MM-DD HH24:MI')
         <= (NOW() AT TIME ZONE 'Asia/Tokyo')
 `;

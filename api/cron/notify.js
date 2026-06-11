@@ -1,4 +1,14 @@
+const db = require('../../backend/src/db');
 const { checkAndNotify } = require('../../backend/src/notify');
+
+async function ensureDbReady() {
+  try {
+    await db.ready;
+  } catch (firstError) {
+    console.warn('DB init failed, retrying once:', firstError.message);
+    await db.initDatabase();
+  }
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -14,10 +24,17 @@ module.exports = async (req, res) => {
   }
 
   try {
+    await ensureDbReady();
     const result = await checkAndNotify();
     return res.status(200).json(result);
   } catch (error) {
     console.error('Cron notify error:', error);
-    return res.status(500).json({ error: '通知処理に失敗しました', detail: error.message });
+    const status = error.message?.includes('DATABASE_URL') ? 503 : 500;
+    return res.status(status).json({
+      error: '通知処理に失敗しました',
+      detail: error.message,
+      database: db.useSupabase ? 'supabase' : 'sqlite',
+      connection: db.getConnectionDiagnostics(),
+    });
   }
 };

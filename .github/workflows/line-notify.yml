@@ -20,10 +20,16 @@ jobs:
       - name: Call notification endpoint
         run: |
           set -euo pipefail
-          url="${{ secrets.APP_URL }}/api/cron/notify"
-          url="${url%/}"
+          base="${{ secrets.APP_URL }}"
+          base="${base%/}"
+          url="${base}/api/cron/notify"
           echo "Calling ${url}"
-          response=$(curl --fail --show-error --silent \
+          http_code=$(curl --silent --show-error --output /tmp/notify-response.json --write-out "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "$url")
-          echo "Response: $response"
+          echo "HTTP ${http_code}"
+          cat /tmp/notify-response.json
+          echo ""
+          if [ "$http_code" != "200" ]; then
+            exit 1
+          fi
