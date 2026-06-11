@@ -278,6 +278,8 @@ export default function Settings({ user, setUser }) {
 
               <li>チャネルアクセストークンを <code>services/notification/.env</code> に設定</li>
 
+              <li>ローカル開発では <code>npm run dev:notification</code> を起動（通知スケジューラー）</li>
+
               <li>LINE公式アカウントを友だち追加</li>
 
               <li>WebhookまたはログからUser IDを取得し、上記に入力</li>

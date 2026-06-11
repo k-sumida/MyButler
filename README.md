@@ -64,7 +64,7 @@ DB_PATH=../../data/mybutler.db
 1. [LINE Developers](https://developers.line.biz/) でMessaging APIチャネルを作成
 2. チャネルアクセストークンを `services/notification/.env` に設定
 3. アプリの「設定」画面でLINE User IDを登録
-4. トークン未設定時はドライランモード（コンソール出力のみ）
+4. トークン未設定時は通知を送信せず、メモも通知済みにしません
 
 ## プロジェクト構成
 

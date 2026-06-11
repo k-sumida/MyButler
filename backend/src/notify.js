@@ -3,8 +3,8 @@ const db = require('./db');
 async function sendLineMessage(userId, message) {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN || '';
   if (!token) {
-    console.log(`[DRY RUN] LINE通知 (user=${userId}): ${message}`);
-    return true;
+    console.warn(`[SKIP] LINE_CHANNEL_ACCESS_TOKEN未設定のため送信しません (user=${userId})`);
+    return false;
   }
 
   const response = await fetch('https://api.line.me/v2/bot/message/push', {

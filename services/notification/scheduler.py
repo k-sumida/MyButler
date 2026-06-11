@@ -24,8 +24,8 @@ def get_db():
 
 def send_line_message(user_id: str, message: str) -> bool:
     if not LINE_TOKEN:
-        print(f"[DRY RUN] LINE通知 (user={user_id}): {message}")
-        return True
+        print(f"[SKIP] LINE_CHANNEL_ACCESS_TOKEN未設定のため送信しません (user={user_id})")
+        return False
 
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
