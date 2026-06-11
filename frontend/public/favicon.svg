@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="MyButler">
   <rect width="100" height="100" rx="22" fill="#f4f6fb"/>
-  <text x="50" y="62" font-size="56" text-anchor="middle"><©</text>
+  <ellipse cx="50" cy="74" rx="36" ry="7" fill="#1e293b"/>
+  <rect x="30" y="34" width="40" height="40" rx="5" fill="#1e293b"/>
+  <rect x="30" y="58" width="40" height="7" fill="#4f6ef7"/>
+  <ellipse cx="50" cy="34" rx="20" ry="5" fill="#334155"/>
 </svg>

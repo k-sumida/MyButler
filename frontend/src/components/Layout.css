@@ -115,13 +115,10 @@
   white-space: nowrap;
 }
 
-.logout-btn--desktop {
+.logout-btn {
   padding: 8px 14px;
   font-size: 13px;
-}
-
-.logout-btn-mobile {
-  display: none;
+  flex-shrink: 0;
 }
 
 .main {
@@ -150,21 +147,15 @@
     display: none;
   }
 
-  .user-name,
-  .logout-btn--desktop {
+  .user-name {
     display: none;
   }
 
-  .logout-btn-mobile {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    font-size: 18px;
-    border-radius: 50%;
+  .logout-btn {
+    padding: 6px 10px;
+    font-size: 12px;
     border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
   }
 
   .user-chip {

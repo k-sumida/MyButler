@@ -37,11 +37,8 @@ export default function Layout({ user, onLogout }) {
             <span className="user-avatar">{initial}</span>
             <span className="user-name">{user.username}</span>
           </div>
-          <button className="btn-ghost logout-btn logout-btn--desktop" onClick={onLogout}>
+          <button className="btn-ghost logout-btn" onClick={onLogout}>
             ログアウト
-          </button>
-          <button className="btn-ghost logout-btn-mobile" onClick={onLogout} aria-label="ログアウト">
-            🚪
           </button>
         </div>
       </header>
