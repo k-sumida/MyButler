@@ -4,11 +4,23 @@
   "private": true,
   "description": "生活管理Webアプリ - メモ・LINE通知・サブスク管理",
   "scripts": {
-    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "vercel-build": "npm run build --prefix frontend",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:detector": "cd services/subscription_detector && python app.py",
     "dev:notification": "cd services/notification && python scheduler.py",
     "init-db": "cd backend && npm run init-db"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "postgres": "^3.4.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.7.0"
   }
 }

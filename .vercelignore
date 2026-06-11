@@ -1,0 +1,9 @@
+data/
+backend/node_modules/
+frontend/node_modules/
+services/
+start.ps1
+start-dev.ps1
+*.db
+*.db-wal
+*.db-shm

@@ -1,11 +1,14 @@
 const express = require('express');
-const { db } = require('../db');
+const db = require('../db');
 const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(authMiddleware);
 
-router.get('/', (req, res) => {
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+router.get('/', async (req, res) => {
+  await db.ready;
   const { type, date } = req.query;
   let sql = 'SELECT * FROM memos WHERE user_id = ?';
   const params = [req.user.id];
@@ -20,13 +23,12 @@ router.get('/', (req, res) => {
   }
 
   sql += ' ORDER BY due_date ASC, due_time ASC, created_at DESC';
-  const memos = db.prepare(sql).all(...params);
+  const memos = await db.all(sql, params);
   res.json({ memos });
 });
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
+  await db.ready;
   const { type, title, content, due_date, due_time, deadline_date } = req.body;
   if (!type || !title || !due_date) {
     return res.status(400).json({ error: '種類、タイトル、日付は必須です' });
@@ -42,16 +44,18 @@ router.post('/', (req, res) => {
 
   const deadline = type === 'todo' && deadline_date ? deadline_date : null;
 
-  const result = db
-    .prepare('INSERT INTO memos (user_id, type, title, content, due_date, due_time, deadline_date) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(req.user.id, type, title, content || '', due_date, notifyTime, deadline);
+  const result = await db.run(
+    'INSERT INTO memos (user_id, type, title, content, due_date, due_time, deadline_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [req.user.id, type, title, content || '', due_date, notifyTime, deadline]
+  );
 
-  const memo = db.prepare('SELECT * FROM memos WHERE id = ?').get(result.lastInsertRowid);
+  const memo = await db.get('SELECT * FROM memos WHERE id = ?', [result.lastInsertRowid]);
   res.status(201).json({ memo });
 });
 
-router.put('/:id', (req, res) => {
-  const memo = db.prepare('SELECT * FROM memos WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+router.put('/:id', async (req, res) => {
+  await db.ready;
+  const memo = await db.get('SELECT * FROM memos WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
   if (!memo) return res.status(404).json({ error: 'メモが見つかりません' });
 
   const { title, content, due_date, due_time, deadline_date, completed } = req.body;
@@ -59,7 +63,7 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ error: '時刻は HH:MM 形式で指定してください' });
   }
 
-  db.prepare(`
+  await db.run(`
     UPDATE memos SET
       title = COALESCE(?, title),
       content = COALESCE(?, content),
@@ -72,7 +76,7 @@ router.put('/:id', (req, res) => {
         ELSE notified
       END
     WHERE id = ?
-  `).run(
+  `, [
     title ?? null,
     content ?? null,
     due_date ?? null,
@@ -82,15 +86,16 @@ router.put('/:id', (req, res) => {
     completed !== undefined ? (completed ? 1 : 0) : null,
     due_date ?? null,
     due_time ?? null,
-    req.params.id
-  );
+    req.params.id,
+  ]);
 
-  const updated = db.prepare('SELECT * FROM memos WHERE id = ?').get(req.params.id);
+  const updated = await db.get('SELECT * FROM memos WHERE id = ?', [req.params.id]);
   res.json({ memo: updated });
 });
 
-router.delete('/:id', (req, res) => {
-  const result = db.prepare('DELETE FROM memos WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
+router.delete('/:id', async (req, res) => {
+  await db.ready;
+  const result = await db.run('DELETE FROM memos WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
   if (result.changes === 0) return res.status(404).json({ error: 'メモが見つかりません' });
   res.json({ message: '削除しました' });
 });

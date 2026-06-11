@@ -1,0 +1,54 @@
+const db = require('./db');
+
+async function sendLineMessage(userId, message) {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN || '';
+  if (!token) {
+    console.log(`[DRY RUN] LINE通知 (user=${userId}): ${message}`);
+    return true;
+  }
+
+  const response = await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      to: userId,
+      messages: [{ type: 'text', text: message }],
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    console.error('LINE送信エラー:', response.status, body);
+    return false;
+  }
+  return true;
+}
+
+async function checkAndNotify() {
+  await db.ready;
+
+  const rows = await db.all(db.getNotifyDueSql());
+
+  let sentCount = 0;
+  for (const row of rows) {
+    const typeLabel = row.type === 'shopping' ? '買い物' : 'やること';
+    const itemLabel = row.type === 'shopping' ? '買うもの' : 'やること';
+    let message = `【MyButler リマインダー】\n種類: ${typeLabel}\n${itemLabel}: ${row.title}\n`;
+    if (row.deadline_date) message += `期日: ${row.deadline_date}\n`;
+    if (row.content) message += `内容: ${row.content}\n`;
+    message += `通知: ${row.due_date} ${row.due_time}`;
+
+    const sent = await sendLineMessage(row.line_user_id, message);
+    if (sent) {
+      await db.run('UPDATE memos SET notified = 1 WHERE id = ?', [row.id]);
+      sentCount += 1;
+    }
+  }
+
+  return { sent_count: sentCount, checked_at: new Date().toISOString() };
+}
+
+module.exports = { checkAndNotify };
