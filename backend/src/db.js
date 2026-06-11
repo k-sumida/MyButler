@@ -197,7 +197,7 @@ async function exec(sql) {
 }
 
 async function ping() {
-  await ready;
+  await initPromise;
   if (useSupabase) {
     await pgClient`SELECT 1`;
     return { ok: true, database: 'supabase' };
