@@ -1,0 +1,99 @@
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.page-header p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+}
+
+.tab-btn.active {
+  background: rgba(79, 140, 255, 0.15);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.add-btn {
+  margin-left: auto;
+}
+
+.memo-form {
+  margin-bottom: 20px;
+}
+
+.memo-form textarea {
+  resize: vertical;
+}
+
+.memo-list {
+  display: grid;
+  gap: 12px;
+}
+
+.memo-card.completed {
+  opacity: 0.6;
+}
+
+.memo-card.completed .memo-title {
+  text-decoration: line-through;
+}
+
+.memo-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.memo-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.memo-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.memo-deadline {
+  font-size: 13px;
+  color: var(--warning);
+  margin-bottom: 6px;
+}
+
+.memo-content {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.memo-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.loading-text {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+}
