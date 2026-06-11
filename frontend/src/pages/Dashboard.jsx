@@ -306,7 +306,7 @@ export default function Dashboard() {
 
         <div className="empty-state card">
 
-          <span style={{ fontSize: 48 }}>{isShopping ? '🛒' : '✅'}</span>
+          <span className="empty-state-icon">{isShopping ? '🛒' : '✅'}</span>
 
           <p>メモがありません。新しいメモを追加しましょう。</p>
 
@@ -361,6 +361,15 @@ export default function Dashboard() {
         </div>
 
       )}
+
+      <button
+        type="button"
+        className={`fab-add ${showForm ? 'open' : ''}`}
+        onClick={() => setShowForm(!showForm)}
+        aria-label={showForm ? 'フォームを閉じる' : '新規メモを追加'}
+      >
+        +
+      </button>
 
     </div>
 

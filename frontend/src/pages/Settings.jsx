@@ -110,7 +110,7 @@ export default function Settings({ user, setUser }) {
 
   return (
 
-    <div className="settings-page">
+    <div className="settings">
 
       <div className="page-header">
 

@@ -36,8 +36,9 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        読み込み中...
+      <div className="loading-screen">
+        <div className="loading-spinner" aria-hidden="true" />
+        <span>読み込み中...</span>
       </div>
     );
   }

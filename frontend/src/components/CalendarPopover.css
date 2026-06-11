@@ -6,16 +6,16 @@
 .calendar-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 10px 14px;
-  background: var(--bg);
+  padding: 12px 16px;
+  background: rgba(8, 11, 18, 0.6);
   color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   text-align: left;
   font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 .calendar-trigger.has-value {
@@ -25,11 +25,11 @@
 .calendar-trigger:hover,
 .calendar-trigger.open {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.15);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 .calendar-trigger-icon {
-  font-size: 16px;
+  font-size: 17px;
   flex-shrink: 0;
 }
 
@@ -40,81 +40,102 @@
 .calendar-trigger-arrow {
   font-size: 10px;
   color: var(--text-muted);
+  transition: transform var(--transition);
+}
+
+.calendar-trigger.open .calendar-trigger-arrow {
+  transform: rotate(180deg);
 }
 
 .calendar-popover {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   z-index: 200;
-  width: 280px;
-  padding: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  width: min(300px, calc(100vw - 48px));
+  padding: 14px;
+  background: rgba(14, 18, 28, 0.95);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  animation: fadeUp 0.2s ease both;
+}
+
+@media (max-width: 480px) {
+  .calendar-popover {
+    left: auto;
+    right: 0;
+    width: min(300px, calc(100vw - 32px));
+  }
 }
 
 .calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .calendar-title {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
+  letter-spacing: -0.01em;
 }
 
 .calendar-nav {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 16px;
   line-height: 1;
 }
 
 .calendar-nav:hover {
   background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
 .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .calendar-weekday {
   text-align: center;
   font-size: 11px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .calendar-weekday:first-child { color: #ff8c8c; }
-.calendar-weekday:last-child { color: #7eb8ff; }
+.calendar-weekday:last-child { color: #8ec5ff; }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 3px;
 }
 
 .calendar-day {
-  width: 32px;
-  height: 32px;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 36px;
+  margin: 0 auto;
   padding: 0;
   background: transparent;
   color: var(--text);
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
+  font-weight: 500;
 }
 
 .calendar-day:hover:not(:disabled):not(.empty) {
@@ -122,8 +143,9 @@
 }
 
 .calendar-day.selected {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), #5b6ef0);
   color: white;
+  box-shadow: 0 2px 8px var(--primary-glow);
 }
 
 .calendar-day.today:not(.selected) {
@@ -132,7 +154,7 @@
 }
 
 .calendar-day.disabled {
-  opacity: 0.3;
+  opacity: 0.25;
   cursor: not-allowed;
 }
 
@@ -143,33 +165,35 @@
 .popover-time {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
 .popover-time label {
   font-size: 12px;
+  font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .popover-time input[type="time"] {
   width: auto;
-  padding: 6px 10px;
+  padding: 8px 12px;
   font-size: 13px;
 }
 
 .popover-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .popover-clear,
 .popover-done {
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 12px;
+  font-weight: 600;
 }

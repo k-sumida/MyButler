@@ -85,7 +85,7 @@ export default function Subscriptions() {
   const formatCurrency = (amount) => `¥${amount.toLocaleString()}`;
 
   return (
-    <div className="subscriptions-page">
+    <div className="subscriptions">
       <div className="page-header">
         <h2>サブスクリプション管理</h2>
         <p>音楽・動画配信サービス等のサブスクを一覧で管理できます</p>
@@ -163,7 +163,7 @@ export default function Subscriptions() {
         <p className="loading-text">読み込み中...</p>
       ) : subs.length === 0 ? (
         <div className="empty-state card">
-          <span style={{ fontSize: 48 }}>📱</span>
+          <span className="empty-state-icon">📱</span>
           <p>サブスクリプションが登録されていません。<br />自動検出または手動で追加してください。</p>
         </div>
       ) : (

@@ -3,29 +3,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background: radial-gradient(ellipse at top, #1a2a4a 0%, var(--bg) 70%);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(107, 140, 255, 0.22), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 80%, rgba(62, 232, 197, 0.1), transparent);
+  pointer-events: none;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.5s ease both;
+  border-color: var(--border-strong);
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 
 .auth-logo {
-  font-size: 48px;
+  font-size: 56px;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 16px rgba(107, 140, 255, 0.35));
 }
 
 .auth-header h2 {
-  font-size: 24px;
-  margin-bottom: 4px;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
 }
 
 .auth-header p {
@@ -36,12 +54,17 @@
 .auth-submit {
   width: 100%;
   margin-top: 8px;
-  padding: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
 }
 
 .auth-switch {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
   font-size: 14px;
   color: var(--text-muted);
 }
@@ -49,8 +72,10 @@
 .auth-switch a {
   color: var(--primary);
   text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition);
 }
 
 .auth-switch a:hover {
-  text-decoration: underline;
+  color: var(--accent);
 }
