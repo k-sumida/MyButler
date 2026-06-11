@@ -5,6 +5,11 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install && npm install --prefix frontend",
   "framework": null,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/api/((?!cron/).*)", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }

@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const express = require('express');
 const cors = require('cors');
+const db = require('./db');
 const authRoutes = require('./routes/auth');
 const memoRoutes = require('./routes/memos');
 const subscriptionRoutes = require('./routes/subscriptions');
@@ -17,17 +18,33 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.get('/api/health', (_req, res) => {
-  res.json({
+app.get('/api/health', async (_req, res) => {
+  const base = {
     status: 'ok',
     service: 'mybutler-api',
     runtime: process.env.VERCEL ? 'vercel' : 'local',
-    database: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL ? 'supabase' : 'sqlite',
-  });
+    database: db.useSupabase ? 'supabase' : 'sqlite',
+  };
+
+  try {
+    const ping = await db.ping();
+    res.json({ ...base, db: ping });
+  } catch (error) {
+    res.status(503).json({
+      ...base,
+      status: 'degraded',
+      db: { ok: false, error: error.message },
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/memos', memoRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+
+app.use((err, _req, res, _next) => {
+  console.error('API error:', err);
+  res.status(500).json({ error: err.message || 'サーバーエラーが発生しました' });
+});
 
 module.exports = app;

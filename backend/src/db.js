@@ -17,11 +17,14 @@ const SQLITE_NOTIFY_DUE_SQL = `
     AND datetime(m.due_date || ' ' || COALESCE(m.due_time, '09:00')) <= datetime('now', 'localtime')
 `;
 
+const INIT_TIMEOUT_MS = 15000;
+
 const useSupabase = !!(process.env.DATABASE_URL || process.env.SUPABASE_DB_URL);
 
 let pgClient = null;
 let sqliteDb = null;
 let initPromise = null;
+let initError = null;
 
 function loadSqlite() {
   try {
@@ -29,6 +32,23 @@ function loadSqlite() {
   } catch {
     return null;
   }
+}
+
+function getConnectionString() {
+  let url = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
+  if (!url.includes('sslmode=')) {
+    url += `${url.includes('?') ? '&' : '?'}sslmode=require`;
+  }
+  return url;
+}
+
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
 }
 
 function toPgSql(sql, params) {
@@ -42,22 +62,37 @@ function rowToObject(row) {
   return row;
 }
 
+async function ensurePgTables() {
+  const existing = await pgClient`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'users'
+  `;
+  if (existing.length > 0) {
+    await migratePostgres();
+    return;
+  }
+
+  for (const statement of SCHEMA_PG_STATEMENTS) {
+    await pgClient.unsafe(statement);
+  }
+  await migratePostgres();
+}
+
 async function initDatabase() {
   if (useSupabase) {
     const postgres = require('postgres');
-    const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
+    const connectionString = getConnectionString();
     pgClient = postgres(connectionString, {
       ssl: 'require',
       max: 1,
-      idle_timeout: 20,
+      idle_timeout: 10,
       connect_timeout: 10,
       prepare: false,
     });
 
-    for (const statement of SCHEMA_PG_STATEMENTS) {
-      await pgClient.unsafe(statement);
-    }
-    await migratePostgres();
+    await pgClient`SELECT 1`;
+    await ensurePgTables();
     return;
   }
 
@@ -161,19 +196,43 @@ async function exec(sql) {
   sqliteDb.exec(sql);
 }
 
+async function ping() {
+  await ready;
+  if (useSupabase) {
+    await pgClient`SELECT 1`;
+    return { ok: true, database: 'supabase' };
+  }
+  sqliteDb.prepare('SELECT 1').get();
+  return { ok: true, database: 'sqlite' };
+}
+
 function getNotifyDueSql() {
   return useSupabase ? NOTIFY_DUE_SQL : SQLITE_NOTIFY_DUE_SQL;
 }
 
-initPromise = initDatabase();
+function startInit() {
+  initPromise = withTimeout(
+    initDatabase(),
+    INIT_TIMEOUT_MS,
+    'データベース接続がタイムアウトしました。DATABASE_URL（Transaction pooler・port 6543）を確認してください。'
+  ).catch((error) => {
+    initError = error;
+    throw error;
+  });
+  return initPromise;
+}
+
+initPromise = startInit();
 
 module.exports = {
   ready: initPromise,
-  initDatabase,
+  initDatabase: startInit,
   all,
   get,
   run,
   exec,
+  ping,
   useSupabase,
   getNotifyDueSql,
+  getInitError: () => initError,
 };

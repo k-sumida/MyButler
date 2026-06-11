@@ -7,7 +7,12 @@ const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
-  await db.ready;
+  try {
+    await db.ready;
+  } catch (error) {
+    return res.status(503).json({ error: error.message || 'データベースに接続できません' });
+  }
+
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'ユーザー名とパスワードは必須です' });
@@ -33,7 +38,12 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  await db.ready;
+  try {
+    await db.ready;
+  } catch (error) {
+    return res.status(503).json({ error: error.message || 'データベースに接続できません' });
+  }
+
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'ユーザー名とパスワードは必須です' });
