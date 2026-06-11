@@ -29,7 +29,7 @@ export default function Login({ onLogin }) {
         <div className="auth-header">
           <span className="auth-logo">🎩</span>
           <h2>MyButler</h2>
-          <p>あなたの生活管理アシスタント</p>
+          <p>ログインしてメモと通知を管理</p>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="form-group">

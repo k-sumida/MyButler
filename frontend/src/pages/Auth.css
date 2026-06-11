@@ -13,8 +13,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(107, 140, 255, 0.22), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 80% 80%, rgba(62, 232, 197, 0.1), transparent);
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(79, 110, 247, 0.1), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 80%, rgba(16, 185, 129, 0.06), transparent);
   pointer-events: none;
 }
 
@@ -36,7 +36,6 @@
   font-size: 56px;
   display: block;
   margin-bottom: 12px;
-  filter: drop-shadow(0 4px 16px rgba(107, 140, 255, 0.35));
 }
 
 .auth-header h2 {

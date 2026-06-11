@@ -69,7 +69,7 @@
 .line-guide {
   margin-top: 24px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
@@ -105,7 +105,7 @@
 }
 
 .line-guide code {
-  background: rgba(8, 11, 18, 0.6);
+  background: var(--bg);
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 12px;

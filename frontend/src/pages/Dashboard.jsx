@@ -34,6 +34,26 @@ const EMPTY_FORM = {
 
 
 
+function isMemoNotified(memo) {
+
+  return memo.notified === 1 || memo.notified === true;
+
+}
+
+
+
+function isNotificationDuePassed(memo) {
+
+  if (!memo.due_date) return false;
+
+  const due = new Date(`${memo.due_date}T${memo.due_time || '09:00'}:00`);
+
+  return !Number.isNaN(due.getTime()) && due <= new Date();
+
+}
+
+
+
 export default function Dashboard() {
 
   const [activeTab, setActiveTab] = useState('shopping');
@@ -316,9 +336,17 @@ export default function Dashboard() {
 
         <div className="memo-list">
 
-          {memoList.map((memo) => (
+          {memoList.map((memo) => {
 
-            <div key={memo.id} className={`memo-card card ${memo.completed ? 'completed' : ''}`}>
+            const notified = isMemoNotified(memo);
+
+            const duePassed = isNotificationDuePassed(memo);
+
+
+
+            return (
+
+            <div key={memo.id} className={`memo-card card ${memo.completed ? 'completed' : ''} ${notified ? 'notified' : ''}`}>
 
               <div className="memo-top">
 
@@ -328,7 +356,31 @@ export default function Dashboard() {
 
                 </span>
 
-                <span className="memo-date">🔔 {memo.due_date} {memo.due_time || '09:00'}</span>
+                <span className={`memo-date ${notified ? 'memo-date--notified' : duePassed ? 'memo-date--passed' : ''}`}>
+
+                  {notified ? (
+
+                    <>
+
+                      <span className="memo-notify-icon memo-notify-icon--sent" aria-hidden="true">✓</span>
+
+                      <span>LINE通知済</span>
+
+                    </>
+
+                  ) : (
+
+                    <>
+
+                      <span className="memo-notify-icon" aria-hidden="true">🔔</span>
+
+                      <span>{memo.due_date} {memo.due_time || '09:00'}</span>
+
+                    </>
+
+                  )}
+
+                </span>
 
               </div>
 
@@ -356,7 +408,9 @@ export default function Dashboard() {
 
             </div>
 
-          ))}
+          );
+
+          })}
 
         </div>
 

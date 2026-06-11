@@ -15,10 +15,7 @@ export default function Layout({ user, onLogout }) {
       <header className="header">
         <div className="header-brand">
           <span className="logo" aria-hidden="true">🎩</span>
-          <div className="header-brand-text">
-            <h1>MyButler</h1>
-            <span className="header-tagline">生活管理</span>
-          </div>
+          <h1 className="header-title">MyButler</h1>
         </div>
 
         <nav className="nav nav-desktop" aria-label="メインナビゲーション">

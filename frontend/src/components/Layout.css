@@ -10,7 +10,7 @@
   gap: 20px;
   padding: 0 24px;
   height: var(--header-h);
-  background: rgba(12, 16, 26, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
@@ -22,30 +22,20 @@
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
-.header-brand-text h1 {
+.header-title {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.header-tagline {
-  display: block;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  line-height: 1;
 }
 
 .logo {
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1;
-  filter: drop-shadow(0 2px 8px rgba(107, 140, 255, 0.3));
 }
 
 .nav {
@@ -81,8 +71,8 @@
 
 .nav-link.active {
   color: var(--primary);
-  background: rgba(107, 140, 255, 0.12);
-  border-color: rgba(107, 140, 255, 0.25);
+  background: rgba(79, 110, 247, 0.08);
+  border-color: rgba(79, 110, 247, 0.18);
 }
 
 .header-user {
@@ -109,7 +99,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), #5b6ef0);
+  background: linear-gradient(135deg, var(--primary), #3b5bdb);
   color: white;
   font-size: 12px;
   font-weight: 700;
@@ -160,10 +150,6 @@
     display: none;
   }
 
-  .header-tagline {
-    display: none;
-  }
-
   .user-name,
   .logout-btn--desktop {
     display: none;
@@ -199,13 +185,14 @@
     right: 0;
     height: calc(var(--bottom-nav-h) + var(--safe-bottom));
     padding-bottom: var(--safe-bottom);
-    background: rgba(10, 14, 22, 0.88);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--border);
     z-index: 100;
     justify-content: space-around;
     align-items: stretch;
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
   }
 
   .bottom-nav-link {
@@ -247,7 +234,6 @@
     height: 3px;
     background: var(--primary);
     border-radius: 0 0 4px 4px;
-    box-shadow: 0 0 12px var(--primary-glow);
   }
 }
 
