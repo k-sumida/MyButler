@@ -1,0 +1,22 @@
+# Vercel Hobby の Cron 制限を回避し、GitHub Actions から通知 API を定期実行する
+# GitHub → Settings → Secrets and variables → Actions に設定:
+#   APP_URL     = https://your-app.vercel.app
+#   CRON_SECRET = Vercel の CRON_SECRET と同じ値
+
+name: LINE Notify
+
+on:
+  schedule:
+    # 5分ごと（GitHub Actions 無料枠で現実的な最短間隔）
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call notification endpoint
+        run: |
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/notify"
