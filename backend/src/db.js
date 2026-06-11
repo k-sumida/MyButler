@@ -17,7 +17,8 @@ const SQLITE_NOTIFY_DUE_SQL = `
     AND datetime(m.due_date || ' ' || COALESCE(m.due_time, '09:00')) <= datetime('now', 'localtime')
 `;
 
-const INIT_TIMEOUT_MS = 15000;
+const INIT_TIMEOUT_MS = 30000;
+const CONNECT_RETRIES = 3;
 
 const useSupabase = !!(process.env.DATABASE_URL || process.env.SUPABASE_DB_URL);
 
@@ -40,6 +41,72 @@ function getConnectionString() {
     url += `${url.includes('?') ? '&' : '?'}sslmode=require`;
   }
   return url;
+}
+
+function getConnectionDiagnostics() {
+  const url = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
+  if (!url) return { configured: false };
+
+  try {
+    const parsed = new URL(url);
+    return {
+      configured: true,
+      host: parsed.hostname,
+      port: parsed.port,
+      user: parsed.username,
+      usesPooler: parsed.hostname.includes('pooler.supabase.com'),
+      usesTransactionPort: parsed.port === '6543',
+    };
+  } catch {
+    return { configured: true, parseError: true };
+  }
+}
+
+function formatDbError(error) {
+  const message = error?.message || String(error);
+  if (!message.includes('CONNECT_TIMEOUT') && !message.includes('タイムアウト')) {
+    return message;
+  }
+
+  const diag = getConnectionDiagnostics();
+  const hints = [
+    'Supabase プロジェクトが一時停止していないか確認（ダッシュボードで Restore）',
+    'Database → Network で IP 制限が有効になっていないか確認',
+    'Connect → Transaction pooler（port 6543）の URI を使用しているか確認',
+    'ユーザー名が postgres.[project-ref] 形式か確認',
+    'パスワードの特殊文字は URL エンコードされているか確認',
+  ];
+
+  return `${message} | host=${diag.host || 'unknown'} port=${diag.port || 'unknown'} | ${hints.join(' / ')}`;
+}
+
+async function connectPostgres() {
+  const postgres = require('postgres');
+  const connectionString = getConnectionString();
+  pgClient = postgres(connectionString, {
+    ssl: 'require',
+    max: 1,
+    idle_timeout: 10,
+    connect_timeout: 25,
+    prepare: false,
+  });
+  await pgClient`SELECT 1`;
+}
+
+async function connectWithRetry() {
+  let lastError;
+  for (let attempt = 1; attempt <= CONNECT_RETRIES; attempt += 1) {
+    try {
+      await connectPostgres();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < CONNECT_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+  throw new Error(formatDbError(lastError));
 }
 
 function withTimeout(promise, ms, message) {
@@ -81,17 +148,7 @@ async function ensurePgTables() {
 
 async function initDatabase() {
   if (useSupabase) {
-    const postgres = require('postgres');
-    const connectionString = getConnectionString();
-    pgClient = postgres(connectionString, {
-      ssl: 'require',
-      max: 1,
-      idle_timeout: 10,
-      connect_timeout: 10,
-      prepare: false,
-    });
-
-    await pgClient`SELECT 1`;
+    await connectWithRetry();
     await ensurePgTables();
     return;
   }
@@ -235,4 +292,5 @@ module.exports = {
   useSupabase,
   getNotifyDueSql,
   getInitError: () => initError,
+  getConnectionDiagnostics,
 };

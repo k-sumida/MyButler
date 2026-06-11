@@ -33,7 +33,11 @@ app.get('/api/health', async (_req, res) => {
     res.status(503).json({
       ...base,
       status: 'degraded',
-      db: { ok: false, error: error.message },
+      db: {
+        ok: false,
+        error: error.message,
+        connection: db.getConnectionDiagnostics(),
+      },
     });
   }
 });
