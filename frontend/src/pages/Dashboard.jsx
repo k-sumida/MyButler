@@ -18,19 +18,41 @@ const TABS = [
 
 
 
-const EMPTY_FORM = {
+function todayString() {
 
-  title: '',
+  const now = new Date();
 
-  content: '',
+  const y = now.getFullYear();
 
-  due_date: '',
+  const m = String(now.getMonth() + 1).padStart(2, '0');
 
-  due_time: '09:00',
+  const d = String(now.getDate()).padStart(2, '0');
 
-  deadline_date: '',
+  return `${y}-${m}-${d}`;
 
-};
+}
+
+
+
+function createEmptyForm() {
+
+  const today = todayString();
+
+  return {
+
+    title: '',
+
+    content: '',
+
+    due_date: today,
+
+    due_time: '09:00',
+
+    deadline_date: today,
+
+  };
+
+}
 
 
 
@@ -64,7 +86,7 @@ export default function Dashboard() {
 
   const [showForm, setShowForm] = useState(false);
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(createEmptyForm);
 
   const [error, setError] = useState('');
 
@@ -102,7 +124,7 @@ export default function Dashboard() {
 
     setShowForm(false);
 
-    setForm(EMPTY_FORM);
+    setForm(createEmptyForm());
 
     loadMemos();
 
@@ -124,7 +146,7 @@ export default function Dashboard() {
 
       await memosApi.create(payload);
 
-      setForm(EMPTY_FORM);
+      setForm(createEmptyForm());
 
       setShowForm(false);
 
@@ -162,7 +184,7 @@ export default function Dashboard() {
 
 
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayString();
 
 
 
