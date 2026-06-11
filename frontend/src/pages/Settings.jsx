@@ -6,6 +6,30 @@ import './Settings.css';
 
 
 
+function formatDateJst(value) {
+
+  if (!value) return '-';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '-';
+
+  return new Intl.DateTimeFormat('ja-JP', {
+
+    timeZone: 'Asia/Tokyo',
+
+    year: 'numeric',
+
+    month: 'long',
+
+    day: 'numeric',
+
+  }).format(date);
+
+}
+
+
+
 export default function Settings({ user, setUser }) {
 
   const [lineUserId, setLineUserId] = useState(user.line_user_id || '');
@@ -140,7 +164,7 @@ export default function Settings({ user, setUser }) {
 
             <span className="info-label">登録日</span>
 
-            <span className="info-value">{user.created_at?.split(' ')[0] || '-'}</span>
+            <span className="info-value">{formatDateJst(user.created_at)}</span>
 
           </div>
 
