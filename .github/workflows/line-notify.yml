@@ -14,9 +14,16 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Call notification endpoint
         run: |
-          curl --fail --show-error --silent \
+          set -euo pipefail
+          url="${{ secrets.APP_URL }}/api/cron/notify"
+          url="${url%/}"
+          echo "Calling ${url}"
+          response=$(curl --fail --show-error --silent \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/cron/notify"
+            "$url")
+          echo "Response: $response"

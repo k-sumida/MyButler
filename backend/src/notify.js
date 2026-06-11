@@ -31,8 +31,10 @@ async function checkAndNotify() {
   await db.ready;
 
   const rows = await db.all(db.getNotifyDueSql());
+  const lineConfigured = !!(process.env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();
 
   let sentCount = 0;
+  let failedCount = 0;
   for (const row of rows) {
     const typeLabel = row.type === 'shopping' ? '買い物' : 'やること';
     const itemLabel = row.type === 'shopping' ? '買うもの' : 'やること';
@@ -45,10 +47,19 @@ async function checkAndNotify() {
     if (sent) {
       await db.run('UPDATE memos SET notified = 1 WHERE id = ?', [row.id]);
       sentCount += 1;
+    } else {
+      failedCount += 1;
     }
   }
 
-  return { sent_count: sentCount, checked_at: new Date().toISOString() };
+  return {
+    sent_count: sentCount,
+    failed_count: failedCount,
+    due_count: rows.length,
+    line_configured: lineConfigured,
+    database: db.useSupabase ? 'supabase' : 'sqlite',
+    checked_at: new Date().toISOString(),
+  };
 }
 
 module.exports = { checkAndNotify };
