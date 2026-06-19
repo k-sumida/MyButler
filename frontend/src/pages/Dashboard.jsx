@@ -34,6 +34,20 @@ function todayString() {
 
 
 
+function nowTimeString() {
+
+  const now = new Date();
+
+  const h = String(now.getHours()).padStart(2, '0');
+
+  const m = String(now.getMinutes()).padStart(2, '0');
+
+  return `${h}:${m}`;
+
+}
+
+
+
 function createEmptyForm() {
 
   const today = todayString();
@@ -46,7 +60,7 @@ function createEmptyForm() {
 
     due_date: today,
 
-    due_time: '09:00',
+    due_time: nowTimeString(),
 
     deadline_date: today,
 
