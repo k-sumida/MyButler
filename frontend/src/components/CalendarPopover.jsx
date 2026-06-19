@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './CalendarPopover.css';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+const MOBILE_MQ = '(max-width: 640px)';
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -25,6 +27,21 @@ function formatDisplayDate(date) {
   return `${parsed.getFullYear()}/${pad(parsed.getMonth() + 1)}/${pad(parsed.getDate())}`;
 }
 
+function useMobileSheet() {
+  const [mobileSheet, setMobileSheet] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const update = () => setMobileSheet(mq.matches);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  return mobileSheet;
+}
+
 export default function CalendarPopover({
   date,
   time,
@@ -39,13 +56,15 @@ export default function CalendarPopover({
   const selected = parseDate(date);
   const min = parseDate(minDate) || new Date();
   const wrapperRef = useRef(null);
+  const mobileSheet = useMobileSheet();
 
   const [open, setOpen] = useState(false);
+  const [placement, setPlacement] = useState('below');
   const [viewYear, setViewYear] = useState(selected?.getFullYear() ?? min.getFullYear());
   const [viewMonth, setViewMonth] = useState((selected?.getMonth() ?? min.getMonth()) + 1);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || mobileSheet) return undefined;
     const handleClickOutside = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setOpen(false);
@@ -53,6 +72,33 @@ export default function CalendarPopover({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open, mobileSheet]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    if (mobileSheet) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+
+    const updatePlacement = () => {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setPlacement(spaceBelow < 360 ? 'above' : 'below');
+    };
+
+    updatePlacement();
+    window.addEventListener('resize', updatePlacement);
+    return () => window.removeEventListener('resize', updatePlacement);
+  }, [open, mobileSheet]);
+
+  useEffect(() => {
+    if (!open || !wrapperRef.current) return;
+    wrapperRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [open]);
 
   useEffect(() => {
@@ -109,6 +155,76 @@ export default function CalendarPopover({
     ? `${formatDisplayDate(date)}${showTime && time ? ` ${time}` : ''}`
     : '';
 
+  const popover = open ? (
+  <div
+    className={[
+      'calendar-popover',
+      mobileSheet ? 'calendar-popover--sheet' : '',
+      !mobileSheet && placement === 'above' ? 'calendar-popover--above' : '',
+    ].filter(Boolean).join(' ')}
+    role="dialog"
+    aria-label="日付選択"
+  >
+    <div className="calendar-header">
+      <button type="button" className="calendar-nav" onClick={() => goMonth(-1)} aria-label="前月">‹</button>
+      <span className="calendar-title">{viewYear}年{viewMonth}月</span>
+      <button type="button" className="calendar-nav" onClick={() => goMonth(1)} aria-label="翌月">›</button>
+    </div>
+
+    <div className="calendar-weekdays">
+      {WEEKDAYS.map((w) => (
+        <span key={w} className="calendar-weekday">{w}</span>
+      ))}
+    </div>
+
+    <div className="calendar-grid">
+      {calendarDays.map((day, i) => (
+        <button
+          key={i}
+          type="button"
+          className={[
+            'calendar-day',
+            day ? '' : 'empty',
+            day && isSelected(day) ? 'selected' : '',
+            day && isToday(day) ? 'today' : '',
+            day && isDisabled(day) ? 'disabled' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={() => day && handleSelectDay(day)}
+          disabled={!day || isDisabled(day)}
+        >
+          {day || ''}
+        </button>
+      ))}
+    </div>
+
+    {showTime && (
+      <div className="popover-time">
+        <label>時刻</label>
+        <input
+          type="time"
+          value={time || '09:00'}
+          onChange={(e) => onTimeChange(e.target.value)}
+        />
+      </div>
+    )}
+
+    <div className="popover-actions">
+      {allowClear && date && (
+        <button
+          type="button"
+          className="btn-secondary popover-clear"
+          onClick={() => { onClear?.(); setOpen(false); }}
+        >
+          クリア
+        </button>
+      )}
+      <button type="button" className="btn-primary popover-done" onClick={() => setOpen(false)}>
+        完了
+      </button>
+    </div>
+  </div>
+  ) : null;
+
   return (
     <div className="calendar-popover-wrap" ref={wrapperRef}>
       <button
@@ -123,67 +239,19 @@ export default function CalendarPopover({
         <span className="calendar-trigger-arrow">{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && (
-        <div className="calendar-popover">
-          <div className="calendar-header">
-            <button type="button" className="calendar-nav" onClick={() => goMonth(-1)} aria-label="前月">‹</button>
-            <span className="calendar-title">{viewYear}年{viewMonth}月</span>
-            <button type="button" className="calendar-nav" onClick={() => goMonth(1)} aria-label="翌月">›</button>
-          </div>
-
-          <div className="calendar-weekdays">
-            {WEEKDAYS.map((w) => (
-              <span key={w} className="calendar-weekday">{w}</span>
-            ))}
-          </div>
-
-          <div className="calendar-grid">
-            {calendarDays.map((day, i) => (
-              <button
-                key={i}
-                type="button"
-                className={[
-                  'calendar-day',
-                  day ? '' : 'empty',
-                  day && isSelected(day) ? 'selected' : '',
-                  day && isToday(day) ? 'today' : '',
-                  day && isDisabled(day) ? 'disabled' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={() => day && handleSelectDay(day)}
-                disabled={!day || isDisabled(day)}
-              >
-                {day || ''}
-              </button>
-            ))}
-          </div>
-
-          {showTime && (
-            <div className="popover-time">
-              <label>時刻</label>
-              <input
-                type="time"
-                value={time || '09:00'}
-                onChange={(e) => onTimeChange(e.target.value)}
-              />
-            </div>
-          )}
-
-          <div className="popover-actions">
-            {allowClear && date && (
-              <button
-                type="button"
-                className="btn-secondary popover-clear"
-                onClick={() => { onClear?.(); setOpen(false); }}
-              >
-                クリア
-              </button>
-            )}
-            <button type="button" className="btn-primary popover-done" onClick={() => setOpen(false)}>
-              完了
-            </button>
-          </div>
-        </div>
+      {open && mobileSheet && createPortal(
+        <button
+          type="button"
+          className="calendar-backdrop"
+          aria-label="カレンダーを閉じる"
+          onClick={() => setOpen(false)}
+        />,
+        document.body,
       )}
+
+      {mobileSheet && open
+        ? createPortal(popover, document.body)
+        : popover}
     </div>
   );
 }

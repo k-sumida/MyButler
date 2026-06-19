@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
     params.push(date);
   }
 
-  sql += ' ORDER BY due_date ASC, due_time ASC, created_at DESC';
+  sql += ' ORDER BY notified ASC, due_date ASC, due_time ASC, created_at DESC';
   const memos = await db.all(sql, params);
   res.json({ memos });
 });

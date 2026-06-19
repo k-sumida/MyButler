@@ -231,4 +231,12 @@
     font-size: 13px;
     white-space: nowrap;
   }
+
+  .memo-form {
+    margin-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 24px);
+  }
+
+  .page-header {
+    margin-bottom: 20px;
+  }
 }

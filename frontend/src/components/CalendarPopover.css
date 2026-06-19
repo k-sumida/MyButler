@@ -62,10 +62,50 @@
 }
 
 @media (max-width: 480px) {
-  .calendar-popover {
+  .calendar-popover:not(.calendar-popover--sheet) {
     left: auto;
     right: 0;
     width: min(300px, calc(100vw - 32px));
+  }
+}
+
+.calendar-popover--above {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.calendar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(15, 23, 42, 0.35);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .calendar-popover--sheet {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 12px);
+    width: auto;
+    max-height: min(72vh, 520px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 300;
+    padding-bottom: calc(12px + var(--safe-bottom));
+  }
+
+  .calendar-popover--sheet .popover-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    padding-top: 12px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
   }
 }
 
