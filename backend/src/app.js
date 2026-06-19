@@ -7,6 +7,7 @@ const db = require('./db');
 const authRoutes = require('./routes/auth');
 const memoRoutes = require('./routes/memos');
 const subscriptionRoutes = require('./routes/subscriptions');
+const allergyLunchRoutes = require('./routes/allergyLunch');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.get('/api/health', async (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/memos', memoRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/allergy-lunch', allergyLunchRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error('API error:', err);

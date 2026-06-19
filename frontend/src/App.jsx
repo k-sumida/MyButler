@@ -4,6 +4,7 @@ import { auth } from './api';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import AllergyLunch from './pages/AllergyLunch';
 import Subscriptions from './pages/Subscriptions';
 import Settings from './pages/Settings';
 import Layout from './components/Layout';
@@ -53,6 +54,7 @@ function App() {
           element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
         >
           <Route index element={<Dashboard />} />
+          <Route path="allergy-lunch" element={<AllergyLunch />} />
           <Route path="subscriptions" element={<Subscriptions />} />
           <Route path="settings" element={<Settings user={user} setUser={setUser} />} />
         </Route>

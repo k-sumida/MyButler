@@ -34,6 +34,8 @@ export default function Settings({ user, setUser }) {
 
   const [lineUserId, setLineUserId] = useState(user.line_user_id || '');
 
+  const [lineEditing, setLineEditing] = useState(false);
+
   const [lineMessage, setLineMessage] = useState('');
 
   const [lineError, setLineError] = useState('');
@@ -74,6 +76,8 @@ export default function Settings({ user, setUser }) {
 
       setLineMessage('LINE連携設定を保存しました');
 
+      setLineEditing(false);
+
     } catch (err) {
 
       setLineError(err.message);
@@ -83,6 +87,34 @@ export default function Settings({ user, setUser }) {
       setLineSaving(false);
 
     }
+
+  };
+
+
+
+  const handleStartLineEdit = () => {
+
+    setLineUserId(user.line_user_id || '');
+
+    setLineError('');
+
+    setLineMessage('');
+
+    setLineEditing(true);
+
+  };
+
+
+
+  const handleCancelLineEdit = () => {
+
+    setLineUserId(user.line_user_id || '');
+
+    setLineError('');
+
+    setLineMessage('');
+
+    setLineEditing(false);
 
   };
 
@@ -282,15 +314,29 @@ export default function Settings({ user, setUser }) {
 
               <label>LINE User ID</label>
 
-              <input
+              {lineEditing ? (
 
-                value={lineUserId}
+                <input
 
-                onChange={(e) => setLineUserId(e.target.value)}
+                  value={lineUserId}
 
-                placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  onChange={(e) => setLineUserId(e.target.value)}
 
-              />
+                  placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+                  autoFocus
+
+                />
+
+              ) : (
+
+                <div className="line-id-readonly">
+
+                  {user.line_user_id || '未設定'}
+
+                </div>
+
+              )}
 
             </div>
 
@@ -298,11 +344,37 @@ export default function Settings({ user, setUser }) {
 
             {lineError && <p className="error-msg">{lineError}</p>}
 
-            <button type="submit" className="btn-primary" disabled={lineSaving}>
+            <div className="line-form-actions">
 
-              {lineSaving ? '保存中...' : '保存'}
+              {lineEditing ? (
 
-            </button>
+                <>
+
+                  <button type="button" className="btn-secondary" onClick={handleCancelLineEdit} disabled={lineSaving}>
+
+                    キャンセル
+
+                  </button>
+
+                  <button type="submit" className="btn-primary" disabled={lineSaving}>
+
+                    {lineSaving ? '保存中...' : '保存'}
+
+                  </button>
+
+                </>
+
+              ) : (
+
+                <button type="button" className="btn-secondary" onClick={handleStartLineEdit}>
+
+                  編集
+
+                </button>
+
+              )}
+
+            </div>
 
           </form>
 

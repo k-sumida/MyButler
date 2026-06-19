@@ -3,6 +3,7 @@ import './Layout.css';
 
 const NAV_ITEMS = [
   { to: '/', end: true, label: 'メモ', icon: '📝', mobileLabel: 'メモ' },
+  { to: '/allergy-lunch', label: 'アレルギー給食', icon: '🍱', mobileLabel: '給食' },
   { to: '/subscriptions', label: 'サブスク', icon: '💳', mobileLabel: 'サブスク' },
   { to: '/settings', label: '設定', icon: '⚙️', mobileLabel: '設定' },
 ];

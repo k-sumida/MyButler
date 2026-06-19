@@ -231,6 +231,33 @@ async function migratePostgres() {
   if (!names.includes('deadline_date')) {
     await exec('ALTER TABLE memos ADD COLUMN deadline_date TEXT');
   }
+
+  const allergyMonths = await all(`
+    SELECT table_name AS name
+    FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'allergy_lunch_months'
+  `);
+  if (allergyMonths.length === 0) {
+    await exec(`CREATE TABLE allergy_lunch_months (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      year_month TEXT NOT NULL,
+      user_allergens TEXT DEFAULT '[]',
+      menu_data TEXT DEFAULT '{"days":[],"legend_allergens":[]}',
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, year_month)
+    )`);
+    await exec(`CREATE TABLE allergy_lunch_images (
+      id SERIAL PRIMARY KEY,
+      month_id INTEGER NOT NULL REFERENCES allergy_lunch_months(id) ON DELETE CASCADE,
+      slot INTEGER NOT NULL CHECK(slot IN (1, 2)),
+      ocr_text TEXT,
+      parsed_data TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(month_id, slot)
+    )`);
+    await exec('CREATE INDEX IF NOT EXISTS idx_allergy_lunch_months_user ON allergy_lunch_months(user_id, year_month)');
+  }
 }
 
 function migrateSqlite() {
@@ -240,6 +267,35 @@ function migrateSqlite() {
   }
   if (!columns.includes('deadline_date')) {
     sqliteDb.exec('ALTER TABLE memos ADD COLUMN deadline_date TEXT');
+  }
+
+  const allergyTable = sqliteDb.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='allergy_lunch_months'",
+  ).get();
+  if (!allergyTable) {
+    sqliteDb.exec(`
+      CREATE TABLE allergy_lunch_months (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        year_month TEXT NOT NULL,
+        user_allergens TEXT DEFAULT '[]',
+        menu_data TEXT DEFAULT '{"days":[],"legend_allergens":[]}',
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(user_id, year_month)
+      );
+      CREATE TABLE allergy_lunch_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month_id INTEGER NOT NULL,
+        slot INTEGER NOT NULL CHECK(slot IN (1, 2)),
+        ocr_text TEXT,
+        parsed_data TEXT,
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (month_id) REFERENCES allergy_lunch_months(id) ON DELETE CASCADE,
+        UNIQUE(month_id, slot)
+      );
+      CREATE INDEX IF NOT EXISTS idx_allergy_lunch_months_user ON allergy_lunch_months(user_id, year_month);
+    `);
   }
 }
 

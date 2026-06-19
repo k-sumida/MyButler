@@ -56,6 +56,18 @@ export const memos = {
   delete: (id) => request(`/memos/${id}`, { method: 'DELETE' }),
 };
 
+export const allergyLunch = {
+  listMonths: () => request('/allergy-lunch/months'),
+  get: (yearMonth) => request(`/allergy-lunch/${yearMonth}`),
+  save: (yearMonth, data) =>
+    request(`/allergy-lunch/${yearMonth}`, { method: 'PUT', body: JSON.stringify(data) }),
+  saveImage: (yearMonth, slot, data) =>
+    request(`/allergy-lunch/${yearMonth}/images/${slot}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};
+
 export const subscriptions = {
   list: () => request('/subscriptions'),
   create: (data) => request('/subscriptions', { method: 'POST', body: JSON.stringify(data) }),

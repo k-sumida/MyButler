@@ -35,6 +35,25 @@ const SCHEMA_PG_STATEMENTS = [
   )`,
   'CREATE INDEX IF NOT EXISTS idx_memos_user_due ON memos(user_id, due_date)',
   'CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)',
+  `CREATE TABLE IF NOT EXISTS allergy_lunch_months (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    year_month TEXT NOT NULL,
+    user_allergens TEXT DEFAULT '[]',
+    menu_data TEXT DEFAULT '{"days":[],"legend_allergens":[]}',
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, year_month)
+  )`,
+  `CREATE TABLE IF NOT EXISTS allergy_lunch_images (
+    id SERIAL PRIMARY KEY,
+    month_id INTEGER NOT NULL REFERENCES allergy_lunch_months(id) ON DELETE CASCADE,
+    slot INTEGER NOT NULL CHECK(slot IN (1, 2)),
+    ocr_text TEXT,
+    parsed_data TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(month_id, slot)
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_allergy_lunch_months_user ON allergy_lunch_months(user_id, year_month)',
 ];
 
 const NOTIFY_DUE_SQL = `
