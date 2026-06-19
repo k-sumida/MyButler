@@ -38,6 +38,26 @@
 
 .add-btn {
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.add-btn:not(.active) {
+  background: linear-gradient(135deg, var(--primary), #3b5bdb);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 2px 10px var(--primary-glow);
+}
+
+.add-btn:not(.active):hover {
+  color: white;
+  border-color: transparent;
+}
+
+.add-btn.active {
+  background: var(--surface);
+  color: var(--text-muted);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
 }
 
 .memo-form {
@@ -191,41 +211,24 @@
   min-width: 100px;
 }
 
-.fab-add {
-  display: none;
-}
-
 @media (max-width: 640px) {
-  .tab-bar .add-btn {
-    display: none;
+  .tab-bar {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 50;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin: 0 -16px 20px;
+    padding: 10px 16px;
+    background: rgba(244, 246, 251, 0.95);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--border);
   }
 
-  .fab-add {
-    display: flex;
-    position: fixed;
-    right: 20px;
-    bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 20px);
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    font-weight: 300;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--primary), #5b6ef0);
-    color: white;
-    box-shadow: 0 6px 24px var(--primary-glow);
-    z-index: 90;
-    padding: 0;
-    transition: transform var(--transition), box-shadow var(--transition);
-  }
-
-  .fab-add:hover {
-    box-shadow: 0 8px 28px var(--primary-glow);
-  }
-
-  .fab-add.open {
-    transform: rotate(45deg);
+  .tab-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
   }
 }

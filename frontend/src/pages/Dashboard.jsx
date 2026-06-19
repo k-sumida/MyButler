@@ -222,10 +222,12 @@ export default function Dashboard() {
 
         ))}
 
-        <button className="btn-primary add-btn" onClick={() => setShowForm(!showForm)}>
-
-          {showForm ? '閉じる' : '+ 新規メモ'}
-
+        <button
+          type="button"
+          className={`tab-btn add-btn ${showForm ? 'active' : ''}`}
+          onClick={() => setShowForm(!showForm)}
+        >
+          {showForm ? '閉じる' : '+ 新規'}
         </button>
 
       </div>
@@ -437,15 +439,6 @@ export default function Dashboard() {
         </div>
 
       )}
-
-      <button
-        type="button"
-        className={`fab-add ${showForm ? 'open' : ''}`}
-        onClick={() => setShowForm(!showForm)}
-        aria-label={showForm ? 'フォームを閉じる' : '新規メモを追加'}
-      >
-        +
-      </button>
 
     </div>
 
