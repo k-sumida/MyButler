@@ -11,6 +11,7 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 function normalizeText(text) {
   return (text || '')
     .replace(/\r/g, '\n')
+    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
     .replace(/[　\s]+/g, ' ')
     .replace(/[（(]/g, '(')
     .replace(/[）)]/g, ')')
@@ -53,7 +54,8 @@ function parseDayEntries(lines, yearMonth) {
   let currentDay = null;
 
   const dayStartPattern = /^(\d{1,2})\s*日?(?:\s*[（(]?\s*([月火水木金土日])\s*[）)]?)?/;
-  const menuKeywords = /献立|主菜|副菜|汁物|麺|パン|カレー|丼/;
+  const dayInlinePattern = /(?:^|\s)(\d{1,2})\s*日?\s*([月火水木金土日])(?=\s|$)/;
+  const menuKeywords = /献立|主菜|副菜|汁物|麺|パン|カレー|丼|ごはん|米|牛乳|サラダ|スープ|味噌/;
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -67,6 +69,25 @@ function parseDayEntries(lines, yearMonth) {
         const date = new Date(year, month - 1, dayNum);
         const weekday = dayMatch[2] || WEEKDAYS[date.getDay()];
         const rest = line.replace(dayStartPattern, '').trim();
+        currentDay = {
+          day: dayNum,
+          date: `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`,
+          weekday,
+          menu: rest,
+          allergens: extractAllergensFromMenuLine(line),
+        };
+        days.push(currentDay);
+        continue;
+      }
+    }
+
+    const inlineMatch = line.match(dayInlinePattern);
+    if (inlineMatch && !dayMatch) {
+      const dayNum = Number(inlineMatch[1]);
+      if (dayNum >= 1 && dayNum <= 31) {
+        const date = new Date(year, month - 1, dayNum);
+        const weekday = inlineMatch[2] || WEEKDAYS[date.getDay()];
+        const rest = line.replace(dayInlinePattern, '').trim();
         currentDay = {
           day: dayNum,
           date: `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`,

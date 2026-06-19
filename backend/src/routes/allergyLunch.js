@@ -1,7 +1,6 @@
 const express = require('express');
 const db = require('../db');
 const { authMiddleware } = require('../middleware/auth');
-const { extractMenuFromImage } = require('../allergyLunchOcr');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -48,6 +47,31 @@ async function getMonthImages(monthId) {
   );
 }
 
+function mergeMenuDataFromImages(images) {
+  const legendSet = new Set();
+  const dayMap = new Map();
+  const sorted = [...images]
+    .map((img) => ({
+      slot: img.slot,
+      ...(parseJson(img.parsed_data, null) || {}),
+    }))
+    .filter((part) => part && (part.days?.length || part.legend_allergens?.length))
+    .sort((a, b) => a.slot - b.slot);
+
+  for (const part of sorted) {
+    (part.legend_allergens || []).forEach((a) => legendSet.add(a));
+    (part.days || []).forEach((day) => {
+      const key = day.date || String(day.day);
+      dayMap.set(key, { ...day });
+    });
+  }
+
+  return {
+    days: [...dayMap.values()].sort((a, b) => a.day - b.day),
+    legend_allergens: [...legendSet],
+  };
+}
+
 router.get('/months', async (req, res) => {
   await db.ready;
   const rows = await db.all(
@@ -55,34 +79,6 @@ router.get('/months', async (req, res) => {
     [req.user.id],
   );
   res.json({ months: rows });
-});
-
-router.post('/ocr', async (req, res) => {
-  await db.ready;
-  const { image_data_url, year_month, slot } = req.body;
-  if (!image_data_url || !year_month) {
-    return res.status(400).json({ error: 'image_data_url と year_month が必要です' });
-  }
-  if (!YEAR_MONTH_PATTERN.test(year_month)) {
-    return res.status(400).json({ error: 'year_month は YYYY-MM 形式で指定してください' });
-  }
-  const slotNum = Number(slot);
-  if (![1, 2].includes(slotNum)) {
-    return res.status(400).json({ error: 'slot は 1 または 2 を指定してください' });
-  }
-
-  try {
-    const result = await extractMenuFromImage(image_data_url, year_month, slotNum);
-    if (!result) {
-      return res.status(503).json({
-        error: 'OPENAI_API_KEY が設定されていません。Vercelの環境変数に設定してください。',
-      });
-    }
-    res.json(result);
-  } catch (err) {
-    console.error('allergy-lunch OCR error:', err);
-    res.status(500).json({ error: err.message || '画像の読み取りに失敗しました' });
-  }
 });
 
 router.get('/:yearMonth', async (req, res) => {
@@ -189,6 +185,41 @@ router.put('/:yearMonth/images/:slot', async (req, res) => {
   row = await getMonthRecord(req.user.id, yearMonth);
   const images = await getMonthImages(row.id);
   res.json(serializeMonth(row, images));
+});
+
+router.delete('/:yearMonth/images/:slot', async (req, res) => {
+  await db.ready;
+  const { yearMonth, slot } = req.params;
+  const slotNum = Number(slot);
+
+  if (!YEAR_MONTH_PATTERN.test(yearMonth)) {
+    return res.status(400).json({ error: 'year_month は YYYY-MM 形式で指定してください' });
+  }
+  if (![1, 2].includes(slotNum)) {
+    return res.status(400).json({ error: '画像スロットは 1 または 2 です' });
+  }
+
+  const row = await getMonthRecord(req.user.id, yearMonth);
+  if (!row) {
+    return res.status(404).json({ error: '対象月のデータが見つかりません' });
+  }
+
+  await db.run(
+    'DELETE FROM allergy_lunch_images WHERE month_id = ? AND slot = ?',
+    [row.id, slotNum],
+  );
+
+  const images = await getMonthImages(row.id);
+  const merged = mergeMenuDataFromImages(images);
+  const now = new Date().toISOString();
+
+  await db.run(
+    'UPDATE allergy_lunch_months SET menu_data = ?, updated_at = ? WHERE id = ?',
+    [JSON.stringify(merged), now, row.id],
+  );
+
+  const updatedRow = await getMonthRecord(req.user.id, yearMonth);
+  res.json(serializeMonth(updatedRow, images));
 });
 
 module.exports = router;

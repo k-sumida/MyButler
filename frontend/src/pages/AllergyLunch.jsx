@@ -7,8 +7,9 @@ import {
   getHighlightAllergens,
   isDayHighlighted,
   mergeMenuData,
+  parseMenuOcrText,
 } from '../utils/allergyLunchParser';
-import { resizeImageForOcr } from '../utils/ocr';
+import { prepareImageForOcr, runOcr } from '../utils/ocr';
 import './AllergyLunch.css';
 
 const EMPTY_MENU = { days: [], legend_allergens: [] };
@@ -21,6 +22,14 @@ function formatMenuItems(menu) {
     .filter(Boolean);
 }
 
+function buildMergedFromMonthData(monthData) {
+  const parsedParts = (monthData.images || [])
+    .filter((img) => img.parsed_data)
+    .sort((a, b) => a.slot - b.slot)
+    .map((img) => ({ ...img.parsed_data, slot: img.slot }));
+  return parsedParts.length ? mergeMenuData(parsedParts) : EMPTY_MENU;
+}
+
 export default function AllergyLunch() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
   const [menuData, setMenuData] = useState(EMPTY_MENU);
@@ -31,6 +40,7 @@ export default function AllergyLunch() {
   ]);
   const [loading, setLoading] = useState(true);
   const [processingSlot, setProcessingSlot] = useState(null);
+  const [ocrProgress, setOcrProgress] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -70,25 +80,23 @@ export default function AllergyLunch() {
   const handleImageCapture = async (slot, file) => {
     if (!file) return;
     setProcessingSlot(slot);
+    setOcrProgress(0);
     setError('');
     setMessage('');
 
     try {
-      const imageDataUrl = await resizeImageForOcr(file);
-      const { ocr_text: ocrText, parsed_data: parsed } = await allergyLunch.ocr(imageDataUrl, yearMonth, slot);
+      const imageDataUrl = await prepareImageForOcr(file);
+      const ocrText = await runOcr(imageDataUrl, setOcrProgress);
+      const parsed = parseMenuOcrText(ocrText, yearMonth);
 
       if (!parsed?.days?.length) {
-        throw new Error('献立を読み取れませんでした。写真を明るく、表全体が写るように撮り直してください。');
+        throw new Error('献立を読み取れませんでした。明るい場所で表全体が写るように撮り直してください。');
       }
 
       await allergyLunch.saveImage(yearMonth, slot, { ocr_text: ocrText, parsed_data: parsed });
 
       const monthData = await allergyLunch.get(yearMonth);
-      const parsedParts = (monthData.images || [])
-        .filter((img) => img.parsed_data)
-        .sort((a, b) => a.slot - b.slot)
-        .map((img) => ({ ...img.parsed_data, slot: img.slot }));
-      const merged = mergeMenuData(parsedParts.length ? parsedParts : [parsed]);
+      const merged = buildMergedFromMonthData(monthData);
       const nextAllergens = userAllergens.length ? userAllergens : merged.legend_allergens;
 
       setMenuData(merged);
@@ -99,6 +107,37 @@ export default function AllergyLunch() {
       await loadMonth();
     } catch (err) {
       setError(err.message || '画像の読み取りに失敗しました');
+    } finally {
+      setProcessingSlot(null);
+      setOcrProgress(0);
+    }
+  };
+
+  const handleDeleteSlot = async (slot) => {
+    const img = images.find((i) => i.slot === slot);
+    if (!img?.has_data) return;
+    if (!window.confirm(`写真${slot}の読み取り結果を削除しますか？`)) return;
+
+    setProcessingSlot(slot);
+    setError('');
+    setMessage('');
+
+    try {
+      const data = await allergyLunch.deleteImage(yearMonth, slot);
+      const merged = data.menu_data || EMPTY_MENU;
+      setMenuData(merged);
+      setImages(data.images || [{ slot: 1, has_data: false }, { slot: 2, has_data: false }]);
+      if (!merged.legend_allergens?.length) {
+        setUserAllergens([]);
+        await saveMonth(merged, []);
+      } else {
+        const nextAllergens = userAllergens.filter((a) => merged.legend_allergens.includes(a));
+        setUserAllergens(nextAllergens);
+        await saveMonth(merged, nextAllergens);
+      }
+      setMessage(`写真${slot}の読み取り結果を削除しました`);
+    } catch (err) {
+      setError(err.message || '削除に失敗しました');
     } finally {
       setProcessingSlot(null);
     }
@@ -123,7 +162,7 @@ export default function AllergyLunch() {
     <div className="allergy-lunch">
       <div className="page-header">
         <h2>アレルギー給食管理</h2>
-        <p>献立表を2枚（前半・後半）撮影してAIで読み取り、アレルギー物質を強調表示します</p>
+        <p>献立表を2枚（前半・後半）撮影してOCRで読み取り、アレルギー物質を強調表示します</p>
       </div>
 
       <div className="card allergy-controls">
@@ -148,7 +187,7 @@ export default function AllergyLunch() {
                   {yearMonth && `（${formatYearMonthLabel(yearMonth)}）`}
                 </p>
                 <label className={`capture-btn ${isProcessing ? 'disabled' : ''}`}>
-                  {isProcessing ? 'AIで読み取り中…' : 'カメラで撮影'}
+                  {isProcessing ? `読み取り中… ${ocrProgress}%` : 'カメラで撮影'}
                   <input
                     type="file"
                     accept="image/*"
@@ -161,6 +200,16 @@ export default function AllergyLunch() {
                     }}
                   />
                 </label>
+                {img?.has_data && (
+                  <button
+                    type="button"
+                    className="btn-danger capture-delete-btn"
+                    disabled={!!processingSlot}
+                    onClick={() => handleDeleteSlot(slot)}
+                  >
+                    読み取り結果を削除
+                  </button>
+                )}
               </div>
             );
           })}
