@@ -7,12 +7,19 @@ import {
   getHighlightAllergens,
   isDayHighlighted,
   mergeMenuData,
-  parseMenuOcrText,
 } from '../utils/allergyLunchParser';
-import { resizeImageForOcr, runOcr } from '../utils/ocr';
+import { resizeImageForOcr } from '../utils/ocr';
 import './AllergyLunch.css';
 
 const EMPTY_MENU = { days: [], legend_allergens: [] };
+
+function formatMenuItems(menu) {
+  if (!menu) return [];
+  return String(menu)
+    .split(/[/／\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export default function AllergyLunch() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
@@ -24,7 +31,6 @@ export default function AllergyLunch() {
   ]);
   const [loading, setLoading] = useState(true);
   const [processingSlot, setProcessingSlot] = useState(null);
-  const [ocrProgress, setOcrProgress] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -64,14 +70,16 @@ export default function AllergyLunch() {
   const handleImageCapture = async (slot, file) => {
     if (!file) return;
     setProcessingSlot(slot);
-    setOcrProgress(0);
     setError('');
     setMessage('');
 
     try {
       const imageDataUrl = await resizeImageForOcr(file);
-      const ocrText = await runOcr(imageDataUrl, setOcrProgress);
-      const parsed = parseMenuOcrText(ocrText, yearMonth);
+      const { ocr_text: ocrText, parsed_data: parsed } = await allergyLunch.ocr(imageDataUrl, yearMonth);
+
+      if (!parsed?.days?.length) {
+        throw new Error('献立を読み取れませんでした。写真を明るく、表全体が写るように撮り直してください。');
+      }
 
       await allergyLunch.saveImage(yearMonth, slot, { ocr_text: ocrText, parsed_data: parsed });
 
@@ -92,7 +100,6 @@ export default function AllergyLunch() {
       setError(err.message || '画像の読み取りに失敗しました');
     } finally {
       setProcessingSlot(null);
-      setOcrProgress(0);
     }
   };
 
@@ -115,7 +122,7 @@ export default function AllergyLunch() {
     <div className="allergy-lunch">
       <div className="page-header">
         <h2>アレルギー給食管理</h2>
-        <p>献立表を撮影してOCR読み取りし、アレルギー物質を強調表示します</p>
+        <p>献立表を撮影してAIで読み取り、アレルギー物質を強調表示します</p>
       </div>
 
       <div className="card allergy-controls">
@@ -140,7 +147,7 @@ export default function AllergyLunch() {
                   {yearMonth && `（${formatYearMonthLabel(yearMonth)}）`}
                 </p>
                 <label className={`capture-btn ${isProcessing ? 'disabled' : ''}`}>
-                  {isProcessing ? `読み取り中… ${ocrProgress}%` : 'カメラで撮影'}
+                  {isProcessing ? 'AIで読み取り中…' : 'カメラで撮影'}
                   <input
                     type="file"
                     accept="image/*"
@@ -203,7 +210,15 @@ export default function AllergyLunch() {
                     <tr key={day.date || day.day} className={highlighted ? 'row-alert' : ''}>
                       <td className={highlighted ? 'cell-alert' : ''}>{day.day}</td>
                       <td>{day.weekday || '-'}</td>
-                      <td className="menu-cell">{day.menu || '-'}</td>
+                      <td className="menu-cell">
+                        {formatMenuItems(day.menu).length > 0 ? (
+                          formatMenuItems(day.menu).map((item, idx) => (
+                            <span key={idx} className="menu-item">{item}</span>
+                          ))
+                        ) : (
+                          '-'
+                        )}
+                      </td>
                       <td>
                         <div className="allergen-tags">
                           {(day.allergens || []).map((a) => (

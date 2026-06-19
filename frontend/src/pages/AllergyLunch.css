@@ -144,6 +144,14 @@
   max-width: 280px;
 }
 
+.menu-item {
+  display: block;
+}
+
+.menu-item + .menu-item {
+  margin-top: 4px;
+}
+
 .allergen-tags {
   display: flex;
   flex-wrap: wrap;

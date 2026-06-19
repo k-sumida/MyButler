@@ -66,6 +66,37 @@ export const allergyLunch = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  ocr: async (imageDataUrl, yearMonth) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/allergy-lunch/ocr`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ image_data_url: imageDataUrl, year_month: yearMonth }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('読み取りがタイムアウトしました。もう一度お試しください。');
+      }
+      throw new Error('サーバーに接続できません。');
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || `読み取りに失敗しました (${res.status})`);
+    }
+    return data;
+  },
 };
 
 export const subscriptions = {

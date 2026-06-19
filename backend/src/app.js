@@ -17,7 +17,7 @@ const allowedOrigin = process.env.CORS_ORIGIN
 app.use(cors({
   origin: process.env.VERCEL ? true : allowedOrigin,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 
 app.get('/api/health', async (_req, res) => {
   const base = {

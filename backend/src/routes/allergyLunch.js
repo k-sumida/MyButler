@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authMiddleware } = require('../middleware/auth');
+const { extractMenuFromImage } = require('../allergyLunchOcr');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -54,6 +55,30 @@ router.get('/months', async (req, res) => {
     [req.user.id],
   );
   res.json({ months: rows });
+});
+
+router.post('/ocr', async (req, res) => {
+  await db.ready;
+  const { image_data_url, year_month } = req.body;
+  if (!image_data_url || !year_month) {
+    return res.status(400).json({ error: 'image_data_url と year_month が必要です' });
+  }
+  if (!YEAR_MONTH_PATTERN.test(year_month)) {
+    return res.status(400).json({ error: 'year_month は YYYY-MM 形式で指定してください' });
+  }
+
+  try {
+    const result = await extractMenuFromImage(image_data_url, year_month);
+    if (!result) {
+      return res.status(503).json({
+        error: 'OPENAI_API_KEY が設定されていません。Vercelの環境変数に設定してください。',
+      });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('allergy-lunch OCR error:', err);
+    res.status(500).json({ error: err.message || '画像の読み取りに失敗しました' });
+  }
 });
 
 router.get('/:yearMonth', async (req, res) => {
