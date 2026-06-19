@@ -15,6 +15,6 @@
   },
   "rewrites": [
     { "source": "/api/((?!cron/).*)", "destination": "/api" },
-    { "source": "/((?!api/|favicon\\.svg|favicon\\.ico|assets/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|favicon\\.svg|favicon\\.ico|assets/|manage/).*)", "destination": "/index.html" }
   ]
 }

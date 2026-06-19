@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>MASteRPiece Project</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --bg-card: rgba(255, 255, 255, 0.04);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #f1f5f9;
+        --text-muted: #94a3b8;
+        --accent: #6366f1;
+        --accent-soft: rgba(99, 102, 241, 0.15);
+        --radius: 16px;
+        --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+
+      body {
+        font-family: 'Noto Sans JP', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        line-height: 1.6;
+        background-image:
+          radial-gradient(ellipse 70% 50% at 50% -10%, rgba(99, 102, 241, 0.22), transparent),
+          radial-gradient(ellipse 50% 40% at 100% 100%, rgba(14, 165, 233, 0.1), transparent);
+        background-attachment: fixed;
+      }
+
+      .page {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 20px 56px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        padding: 6px 14px;
+        border-radius: 999px;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        font-size: clamp(26px, 6vw, 34px);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+
+      .section {
+        margin-bottom: 28px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        padding-left: 4px;
+      }
+
+      .section-title::before {
+        content: '';
+        width: 3px;
+        height: 14px;
+        background: linear-gradient(180deg, var(--accent), #38bdf8);
+        border-radius: 2px;
+      }
+
+      .link-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .link-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        text-decoration: none;
+        color: inherit;
+        transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .link-card:hover {
+        border-color: rgba(99, 102, 241, 0.45);
+        background: rgba(99, 102, 241, 0.08);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+      }
+
+      .link-card:active {
+        transform: translateY(0);
+      }
+
+      .link-icon {
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .link-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .link-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+
+      .link-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .link-arrow {
+        flex-shrink: 0;
+        color: var(--text-muted);
+        font-size: 18px;
+        transition: transform 0.2s, color 0.2s;
+      }
+
+      .link-card:hover .link-arrow {
+        color: var(--accent);
+        transform: translateX(3px);
+      }
+
+      .footer {
+        margin-top: 48px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      @media (max-width: 480px) {
+        .page {
+          padding: 28px 16px 40px;
+        }
+
+        .header {
+          margin-bottom: 32px;
+        }
+
+        .link-card {
+          padding: 14px 16px;
+        }
+
+        .link-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 20px;
+        }
+
+        .link-desc {
+          white-space: normal;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <span class="badge">Management Portal</span>
+        <h1>MASteRPiece Project</h1>
+        <p class="subtitle">管理プロジェクトへのクイックリンク</p>
+      </header>
+
+      <section class="section">
+        <h2 class="section-title">アプリケーション</h2>
+        <div class="link-grid">
+          <a class="link-card" href="https://msrp-mybutler.vercel.app/" target="_blank" rel="noreferrer">
+            <span class="link-icon" aria-hidden="true">🎩</span>
+            <span class="link-body">
+              <span class="link-name">MyButler</span>
+              <span class="link-desc">生活管理Webアプリ（メモ・LINE通知・サブスク管理）</span>
+            </span>
+            <span class="link-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">開発・デプロイ</h2>
+        <div class="link-grid">
+          <a class="link-card" href="https://github.com" target="_blank" rel="noreferrer">
+            <span class="link-icon" aria-hidden="true">🐙</span>
+            <span class="link-body">
+              <span class="link-name">GitHub</span>
+              <span class="link-desc">ソースコード管理・リポジトリ</span>
+            </span>
+            <span class="link-arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="link-card" href="https://vercel.com/msrp-projects" target="_blank" rel="noreferrer">
+            <span class="link-icon" aria-hidden="true">▲</span>
+            <span class="link-body">
+              <span class="link-name">Vercel</span>
+              <span class="link-desc">ホスティング・デプロイ・環境変数</span>
+            </span>
+            <span class="link-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">データベース</h2>
+        <div class="link-grid">
+          <a class="link-card" href="https://supabase.com/dashboard/project/ahtebzkkwvhbfzceuvjq/settings/general" target="_blank" rel="noreferrer">
+            <span class="link-icon" aria-hidden="true">🗄️</span>
+            <span class="link-body">
+              <span class="link-name">Supabase</span>
+              <span class="link-desc">PostgreSQL・プロジェクト設定</span>
+            </span>
+            <span class="link-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">運用・自動化</h2>
+        <div class="link-grid">
+          <a class="link-card" href="https://console.cron-job.org/dashboard" target="_blank" rel="noreferrer">
+            <span class="link-icon" aria-hidden="true">⏱️</span>
+            <span class="link-body">
+              <span class="link-name">cron-job.org</span>
+              <span class="link-desc">LINE通知の定期実行スケジューラー</span>
+            </span>
+            <span class="link-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">外部連携</h2>
+        <div class="link-grid">
+          <a class="link-card" href="https://developers.line.biz/console/channel/2010350581/basics" target="_blank" rel="noreferrer">
+            <span class="link-icon" aria-hidden="true">💬</span>
+            <span class="link-body">
+              <span class="link-name">LINE Developers</span>
+              <span class="link-desc">Messaging API・チャネル設定</span>
+            </span>
+            <span class="link-arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>MASteRPiece Project — Internal use</p>
+      </footer>
+    </div>
+  </body>
+</html>
