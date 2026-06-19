@@ -72,7 +72,6 @@ def check_and_notify():
         item_label = "買うもの" if row["type"] == "shopping" else "やること"
         message = (
             f"【MyButler リマインダー】\n"
-            f"ユーザー: {row['username']}\n"
             f"種類: {type_label}\n"
             f"{item_label}: {row['title']}\n"
         )

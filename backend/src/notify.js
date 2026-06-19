@@ -38,7 +38,7 @@ async function checkAndNotify() {
   for (const row of rows) {
     const typeLabel = row.type === 'shopping' ? '買い物' : 'やること';
     const itemLabel = row.type === 'shopping' ? '買うもの' : 'やること';
-    let message = `【MyButler リマインダー】\nユーザー: ${row.username}\n種類: ${typeLabel}\n${itemLabel}: ${row.title}\n`;
+    let message = `【MyButler リマインダー】\n種類: ${typeLabel}\n${itemLabel}: ${row.title}\n`;
     if (row.deadline_date) message += `期日: ${row.deadline_date}\n`;
     if (row.content) message += `内容: ${row.content}\n`;
     message += `通知: ${row.due_date} ${row.due_time}`;
