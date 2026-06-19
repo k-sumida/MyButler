@@ -111,22 +111,15 @@ export function parseMenuOcrText(ocrText, yearMonth) {
 export function mergeMenuData(parts) {
   const legendSet = new Set();
   const dayMap = new Map();
+  const sortedParts = [...parts]
+    .filter(Boolean)
+    .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
 
-  for (const part of parts) {
-    if (!part) continue;
+  for (const part of sortedParts) {
     (part.legend_allergens || []).forEach((a) => legendSet.add(a));
     (part.days || []).forEach((day) => {
       const key = day.date || String(day.day);
-      const existing = dayMap.get(key);
-      if (!existing) {
-        dayMap.set(key, { ...day });
-        return;
-      }
-      dayMap.set(key, {
-        ...existing,
-        menu: [existing.menu, day.menu].filter(Boolean).join(' / '),
-        allergens: [...new Set([...(existing.allergens || []), ...(day.allergens || [])])],
-      });
+      dayMap.set(key, { ...day });
     });
   }
 

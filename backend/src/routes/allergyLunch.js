@@ -59,16 +59,20 @@ router.get('/months', async (req, res) => {
 
 router.post('/ocr', async (req, res) => {
   await db.ready;
-  const { image_data_url, year_month } = req.body;
+  const { image_data_url, year_month, slot } = req.body;
   if (!image_data_url || !year_month) {
     return res.status(400).json({ error: 'image_data_url と year_month が必要です' });
   }
   if (!YEAR_MONTH_PATTERN.test(year_month)) {
     return res.status(400).json({ error: 'year_month は YYYY-MM 形式で指定してください' });
   }
+  const slotNum = Number(slot);
+  if (![1, 2].includes(slotNum)) {
+    return res.status(400).json({ error: 'slot は 1 または 2 を指定してください' });
+  }
 
   try {
-    const result = await extractMenuFromImage(image_data_url, year_month);
+    const result = await extractMenuFromImage(image_data_url, year_month, slotNum);
     if (!result) {
       return res.status(503).json({
         error: 'OPENAI_API_KEY が設定されていません。Vercelの環境変数に設定してください。',

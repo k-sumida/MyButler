@@ -75,7 +75,7 @@ export default function AllergyLunch() {
 
     try {
       const imageDataUrl = await resizeImageForOcr(file);
-      const { ocr_text: ocrText, parsed_data: parsed } = await allergyLunch.ocr(imageDataUrl, yearMonth);
+      const { ocr_text: ocrText, parsed_data: parsed } = await allergyLunch.ocr(imageDataUrl, yearMonth, slot);
 
       if (!parsed?.days?.length) {
         throw new Error('献立を読み取れませんでした。写真を明るく、表全体が写るように撮り直してください。');
@@ -86,7 +86,8 @@ export default function AllergyLunch() {
       const monthData = await allergyLunch.get(yearMonth);
       const parsedParts = (monthData.images || [])
         .filter((img) => img.parsed_data)
-        .map((img) => img.parsed_data);
+        .sort((a, b) => a.slot - b.slot)
+        .map((img) => ({ ...img.parsed_data, slot: img.slot }));
       const merged = mergeMenuData(parsedParts.length ? parsedParts : [parsed]);
       const nextAllergens = userAllergens.length ? userAllergens : merged.legend_allergens;
 
@@ -94,7 +95,7 @@ export default function AllergyLunch() {
       setUserAllergens(nextAllergens);
       await saveMonth(merged, nextAllergens);
 
-      setMessage(`写真${slot}を読み取りました（${merged.days.length}日分）`);
+      setMessage(`写真${slot}を読み取りました（合計${merged.days.length}日分）`);
       await loadMonth();
     } catch (err) {
       setError(err.message || '画像の読み取りに失敗しました');
@@ -122,7 +123,7 @@ export default function AllergyLunch() {
     <div className="allergy-lunch">
       <div className="page-header">
         <h2>アレルギー給食管理</h2>
-        <p>献立表を撮影してAIで読み取り、アレルギー物質を強調表示します</p>
+        <p>献立表を2枚（前半・後半）撮影してAIで読み取り、アレルギー物質を強調表示します</p>
       </div>
 
       <div className="card allergy-controls">
@@ -241,7 +242,7 @@ export default function AllergyLunch() {
       ) : (
         <div className="empty-state card">
           <span className="empty-state-icon">🍱</span>
-          <p>献立表の写真を撮影してください（1ヶ月あたり最大2枚）</p>
+          <p>献立表の写真を撮影してください（前半・後半の2枚）</p>
         </div>
       )}
     </div>

@@ -7,9 +7,20 @@ const STANDARD_ALLERGENS = [
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-function buildPrompt(yearMonth) {
+const SLOT_LABELS = {
+  1: '前半（1枚目）',
+  2: '後半（2枚目）',
+};
+
+function buildPrompt(yearMonth, slot) {
   const allergenList = STANDARD_ALLERGENS.join('、');
-  return `この画像は日本の学校給食の献立表です。対象月は ${yearMonth} です。
+  const slotLabel = SLOT_LABELS[slot];
+  const slotHint = slotLabel
+    ? `この画像は${yearMonth}の献立表の${slotLabel}です。`
+    : `対象月は ${yearMonth} です。`;
+
+  return `この画像は日本の学校給食の献立表です。${slotHint}
+献立表は通常2枚に分かれており、平日の給食がある日のみが記載されています（日数は月によって異なります）。
 画像から献立表を読み取り、次のJSON形式のみで返してください（説明文は不要）。
 
 {
@@ -32,7 +43,7 @@ function buildPrompt(yearMonth) {
 - 献立中の括弧書き・記号・番号から allergens を推定
 - 使用可能なアレルギー物質の参考: ${allergenList}
 - 表形式（カレンダー型）の場合も、日ごとに1行ずつ days に展開
-- 読み取れない日は含めない
+- この画像に写っていない日付は days に含めない
 - 日本語で正確に読み取ること`;
 }
 
@@ -62,7 +73,7 @@ function normalizeVisionResult(raw, yearMonth) {
   };
 }
 
-async function extractWithOpenAI(imageDataUrl, yearMonth) {
+async function extractWithOpenAI(imageDataUrl, yearMonth, slot) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return null;
@@ -80,7 +91,7 @@ async function extractWithOpenAI(imageDataUrl, yearMonth) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: buildPrompt(yearMonth) },
+            { type: 'text', text: buildPrompt(yearMonth, slot) },
             { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } },
           ],
         },
