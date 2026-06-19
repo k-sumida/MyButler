@@ -260,6 +260,22 @@ export default function Settings({ user, setUser }) {
 
           </p>
 
+          <div className="line-notice">
+
+            <p><strong>LINE User ID について</strong></p>
+
+            <ul>
+
+              <li>LINE User ID は<strong>1つのLINEアカウント（1人の端末）</strong>を表します。</li>
+
+              <li>家族など別々の人がそれぞれのスマホで受け取るには、<strong>各人が自分のLINE User ID</strong>を設定してください（同じIDのコピーでは届きません）。</li>
+
+              <li>1台のスマホでまとめて受け取る場合は、複数のMyButlerユーザーが<strong>同じLINE User ID</strong>を設定できます（各ユーザーのメモが届きます）。</li>
+
+            </ul>
+
+          </div>
+
           <form onSubmit={handleSaveLine}>
 
             <div className="form-group">

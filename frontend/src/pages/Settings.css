@@ -74,6 +74,34 @@
   border-radius: var(--radius-sm);
 }
 
+.line-notice {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: rgba(79, 110, 247, 0.06);
+  border: 1px solid rgba(79, 110, 247, 0.18);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+.line-notice p {
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.line-notice ul {
+  padding-left: 18px;
+}
+
+.line-notice li {
+  margin-bottom: 6px;
+}
+
+.line-notice li:last-child {
+  margin-bottom: 0;
+}
+
 .line-guide h4 {
   font-size: 13px;
   font-weight: 600;
