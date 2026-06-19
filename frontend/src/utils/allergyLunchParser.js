@@ -8,13 +8,25 @@ export const STANDARD_ALLERGENS = [
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+function toHalfWidthDigits(text) {
+  return (text || '').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+}
+
+function fixOcrTypos(text) {
+  return toHalfWidthDigits(text)
+    .replace(/[|｜]/g, '1')
+    .replace(/(\d)\s*[OoＯｏ]\s*(\d)/g, '$1 0 $2')
+    .replace(/([月火水木金土日])\s*[|｜l]\s/g, '$1 ');
+}
+
 function normalizeText(text) {
-  return (text || '')
+  return fixOcrTypos(text)
     .replace(/\r/g, '\n')
-    .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-    .replace(/[　\s]+/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/[　]/g, ' ')
     .replace(/[（(]/g, '(')
     .replace(/[）)]/g, ')')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
@@ -26,16 +38,16 @@ function findAllergensInText(text) {
   return [...new Set(found)];
 }
 
-function extractLegendAllergens(lines) {
-  const legendStart = lines.findIndex((line) =>
-    /アレルギー原因食品/.test(line) || /アレルギー物質/.test(line),
-  );
-  if (legendStart === -1) {
-    return findAllergensInText(lines.join('\n'));
+function extractLegendAllergens(text) {
+  const legendMatch = text.match(/アレルギー原因食品等[^\n]*/);
+  if (legendMatch) {
+    return findAllergensInText(legendMatch[0]);
   }
-
-  const legendLines = lines.slice(legendStart, legendStart + 20);
-  return findAllergensInText(legendLines.join('\n'));
+  const idx = text.search(/アレルギー原因食品|アレルギー物質/);
+  if (idx >= 0) {
+    return findAllergensInText(text.slice(idx, idx + 400));
+  }
+  return findAllergensInText(text);
 }
 
 function extractAllergensFromMenuLine(line) {
@@ -48,14 +60,62 @@ function extractAllergensFromMenuLine(line) {
   return [...new Set(fromMarkers)];
 }
 
-function parseDayEntries(lines, yearMonth) {
+function cleanMenuText(menu) {
+  return menu
+    .replace(/アレルギー原因食品[\s\S]*$/g, '')
+    .replace(/栄養成分|熱量|カロリー|注意事項[\s\S]*$/g, '')
+    .replace(/^[\s/、。]+|[\s/、。]+$/g, '')
+    .trim();
+}
+
+function isValidMenuLine(line) {
+  if (!line || line.length < 2) return false;
+  if (/^[0-9\s/.、-]+$/.test(line)) return false;
+  if (/^(月|火|水|木|金|土|日)$/.test(line)) return false;
+  return true;
+}
+
+function parseDayBlocks(text, yearMonth) {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const menuSection = text.split(/アレルギー原因食品/)[0];
+  const dayPattern = /(\d{1,2})\s*日?\s*([月火水木金土日])/g;
+  const matches = [...menuSection.matchAll(dayPattern)];
+
+  const days = [];
+  const seen = new Set();
+
+  for (let i = 0; i < matches.length; i += 1) {
+    const match = matches[i];
+    const dayNum = Number(match[1]);
+    if (dayNum < 1 || dayNum > 31 || seen.has(dayNum)) continue;
+
+    const start = match.index + match[0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : menuSection.length;
+    let menu = cleanMenuText(menuSection.slice(start, end).replace(/\n+/g, ' / '));
+
+    if (!isValidMenuLine(menu)) continue;
+
+    seen.add(dayNum);
+    const weekday = match[2] || WEEKDAYS[new Date(year, month - 1, dayNum).getDay()];
+    days.push({
+      day: dayNum,
+      date: `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`,
+      weekday,
+      menu,
+      allergens: extractAllergensFromMenuLine(menu),
+    });
+  }
+
+  return days;
+}
+
+function parseDayEntriesFromLines(lines, yearMonth) {
   const [year, month] = yearMonth.split('-').map(Number);
   const days = [];
   let currentDay = null;
 
   const dayStartPattern = /^(\d{1,2})\s*日?(?:\s*[（(]?\s*([月火水木金土日])\s*[）)]?)?/;
   const dayInlinePattern = /(?:^|\s)(\d{1,2})\s*日?\s*([月火水木金土日])(?=\s|$)/;
-  const menuKeywords = /献立|主菜|副菜|汁物|麺|パン|カレー|丼|ごはん|米|牛乳|サラダ|スープ|味噌/;
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -66,8 +126,7 @@ function parseDayEntries(lines, yearMonth) {
     if (dayMatch) {
       const dayNum = Number(dayMatch[1]);
       if (dayNum >= 1 && dayNum <= 31) {
-        const date = new Date(year, month - 1, dayNum);
-        const weekday = dayMatch[2] || WEEKDAYS[date.getDay()];
+        const weekday = dayMatch[2] || WEEKDAYS[new Date(year, month - 1, dayNum).getDay()];
         const rest = line.replace(dayStartPattern, '').trim();
         currentDay = {
           day: dayNum,
@@ -85,8 +144,7 @@ function parseDayEntries(lines, yearMonth) {
     if (inlineMatch && !dayMatch) {
       const dayNum = Number(inlineMatch[1]);
       if (dayNum >= 1 && dayNum <= 31) {
-        const date = new Date(year, month - 1, dayNum);
-        const weekday = inlineMatch[2] || WEEKDAYS[date.getDay()];
+        const weekday = inlineMatch[2] || WEEKDAYS[new Date(year, month - 1, dayNum).getDay()];
         const rest = line.replace(dayInlinePattern, '').trim();
         currentDay = {
           day: dayNum,
@@ -100,13 +158,11 @@ function parseDayEntries(lines, yearMonth) {
       }
     }
 
-    if (currentDay && line.length > 1 && !/^[0-9０-９\s]+$/.test(line)) {
-      if (menuKeywords.test(line) || line.length >= 3) {
-        currentDay.menu = currentDay.menu ? `${currentDay.menu} / ${line}` : line;
-        currentDay.allergens = [
-          ...new Set([...currentDay.allergens, ...extractAllergensFromMenuLine(line)]),
-        ];
-      }
+    if (currentDay && isValidMenuLine(line)) {
+      currentDay.menu = currentDay.menu ? `${currentDay.menu} / ${line}` : line;
+      currentDay.allergens = [
+        ...new Set([...currentDay.allergens, ...extractAllergensFromMenuLine(line)]),
+      ];
     }
   }
 
@@ -115,16 +171,15 @@ function parseDayEntries(lines, yearMonth) {
 
 /**
  * OCRテキストから献立表データを抽出
- * @param {string} ocrText
- * @param {string} yearMonth - YYYY-MM
  */
 export function parseMenuOcrText(ocrText, yearMonth) {
   const normalized = normalizeText(ocrText);
   const lines = normalized.split('\n').map((l) => l.trim()).filter(Boolean);
 
-  const legend_allergens = extractLegendAllergens(lines);
-  const menuLines = lines.filter((line) => !/アレルギー原因食品等/.test(line));
-  const days = parseDayEntries(menuLines, yearMonth);
+  const legend_allergens = extractLegendAllergens(normalized);
+  const blockDays = parseDayBlocks(normalized, yearMonth);
+  const lineDays = parseDayEntriesFromLines(lines, yearMonth);
+  const days = blockDays.length >= lineDays.length ? blockDays : lineDays;
 
   return { days, legend_allergens };
 }

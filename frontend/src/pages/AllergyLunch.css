@@ -68,6 +68,66 @@
   font-size: 13px;
 }
 
+.capture-manual-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.capture-manual-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.manual-ocr-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.manual-ocr-panel h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.manual-ocr-textarea {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  font-family: inherit;
+}
+
+.manual-ocr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.manual-parse-btn {
+  flex: 1;
+  min-width: 160px;
+  margin-top: 0;
+}
+
 .allergy-legend-panel {
   margin-bottom: 20px;
 }

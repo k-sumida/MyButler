@@ -68,6 +68,39 @@ export const allergyLunch = {
     }),
   deleteImage: (yearMonth, slot) =>
     request(`/allergy-lunch/${yearMonth}/images/${slot}`, { method: 'DELETE' }),
+  ocr: async (imageDataUrl) => {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/allergy-lunch/ocr`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ image_data_url: imageDataUrl }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('読み取りがタイムアウトしました。');
+      }
+      throw new Error('サーバーに接続できません。');
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data.error || `読み取りに失敗しました (${res.status})`);
+      err.fallback = data.fallback;
+      throw err;
+    }
+    return data;
+  },
 };
 
 export const subscriptions = {

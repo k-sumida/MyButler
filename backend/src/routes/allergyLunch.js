@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authMiddleware } = require('../middleware/auth');
+const { ocrWithOcrSpace } = require('../allergyLunchOcr');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -79,6 +80,28 @@ router.get('/months', async (req, res) => {
     [req.user.id],
   );
   res.json({ months: rows });
+});
+
+router.post('/ocr', async (req, res) => {
+  await db.ready;
+  const { image_data_url } = req.body;
+  if (!image_data_url) {
+    return res.status(400).json({ error: 'image_data_url が必要です' });
+  }
+
+  try {
+    const result = await ocrWithOcrSpace(image_data_url);
+    if (!result) {
+      return res.status(503).json({
+        error: 'OCR_SPACE_API_KEY が未設定です。Vercelの環境変数に設定するか、ブラウザ内OCRを使用してください。',
+        fallback: true,
+      });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('allergy-lunch OCR error:', err);
+    res.status(500).json({ error: err.message || '画像の読み取りに失敗しました' });
+  }
 });
 
 router.get('/:yearMonth', async (req, res) => {

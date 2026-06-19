@@ -9,7 +9,7 @@ import {
   mergeMenuData,
   parseMenuOcrText,
 } from '../utils/allergyLunchParser';
-import { prepareImageForOcr, runOcr } from '../utils/ocr';
+import { buildOcrVariants, runOcrFromFile } from '../utils/ocr';
 import './AllergyLunch.css';
 
 const EMPTY_MENU = { days: [], legend_allergens: [] };
@@ -30,6 +30,25 @@ function buildMergedFromMonthData(monthData) {
   return parsedParts.length ? mergeMenuData(parsedParts) : EMPTY_MENU;
 }
 
+async function recognizeImageText(file, onProgress) {
+  const variants = await buildOcrVariants(file);
+
+  try {
+    const serverResult = await allergyLunch.ocr(variants[0]);
+    if (serverResult?.text?.trim()) {
+      if (onProgress) onProgress(100);
+      return { text: serverResult.text.trim(), method: serverResult.method || 'ocr-space' };
+    }
+  } catch (err) {
+    if (!err.fallback) {
+      console.warn('Server OCR failed, falling back to browser OCR:', err.message);
+    }
+  }
+
+  const text = await runOcrFromFile(file, onProgress);
+  return { text, method: 'tesseract' };
+}
+
 export default function AllergyLunch() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
   const [menuData, setMenuData] = useState(EMPTY_MENU);
@@ -43,6 +62,8 @@ export default function AllergyLunch() {
   const [ocrProgress, setOcrProgress] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [manualSlot, setManualSlot] = useState(null);
+  const [manualText, setManualText] = useState('');
 
   const highlightAllergens = useMemo(
     () => getHighlightAllergens(menuData, userAllergens),
@@ -77,40 +98,75 @@ export default function AllergyLunch() {
     });
   };
 
+  const applyParsedResult = async (slot, ocrText, parsed) => {
+    await allergyLunch.saveImage(yearMonth, slot, { ocr_text: ocrText, parsed_data: parsed });
+
+    const monthData = await allergyLunch.get(yearMonth);
+    const merged = buildMergedFromMonthData(monthData);
+    const nextAllergens = userAllergens.length ? userAllergens : merged.legend_allergens;
+
+    setMenuData(merged);
+    setUserAllergens(nextAllergens);
+    await saveMonth(merged, nextAllergens);
+    setMessage(`写真${slot}を読み取りました（合計${merged.days.length}日分）`);
+    setManualSlot(null);
+    setManualText('');
+    await loadMonth();
+  };
+
   const handleImageCapture = async (slot, file) => {
     if (!file) return;
     setProcessingSlot(slot);
     setOcrProgress(0);
     setError('');
     setMessage('');
+    setManualSlot(null);
 
     try {
-      const imageDataUrl = await prepareImageForOcr(file);
-      const ocrText = await runOcr(imageDataUrl, setOcrProgress);
+      const { text: ocrText } = await recognizeImageText(file, setOcrProgress);
       const parsed = parseMenuOcrText(ocrText, yearMonth);
 
       if (!parsed?.days?.length) {
-        throw new Error('献立を読み取れませんでした。明るい場所で表全体が写るように撮り直してください。');
+        setManualSlot(slot);
+        setManualText(ocrText);
+        setError('自動解析できませんでした。下のテキストを確認・修正して「再解析」を押してください。');
+        return;
       }
 
-      await allergyLunch.saveImage(yearMonth, slot, { ocr_text: ocrText, parsed_data: parsed });
-
-      const monthData = await allergyLunch.get(yearMonth);
-      const merged = buildMergedFromMonthData(monthData);
-      const nextAllergens = userAllergens.length ? userAllergens : merged.legend_allergens;
-
-      setMenuData(merged);
-      setUserAllergens(nextAllergens);
-      await saveMonth(merged, nextAllergens);
-
-      setMessage(`写真${slot}を読み取りました（合計${merged.days.length}日分）`);
-      await loadMonth();
+      await applyParsedResult(slot, ocrText, parsed);
     } catch (err) {
       setError(err.message || '画像の読み取りに失敗しました');
     } finally {
       setProcessingSlot(null);
       setOcrProgress(0);
     }
+  };
+
+  const handleManualParse = async () => {
+    if (!manualSlot || !manualText.trim()) return;
+    setProcessingSlot(manualSlot);
+    setError('');
+    setMessage('');
+
+    try {
+      const parsed = parseMenuOcrText(manualText, yearMonth);
+      if (!parsed?.days?.length) {
+        throw new Error('献立を解析できませんでした。「3 火」のように日付と曜日が含まれているか確認してください。');
+      }
+      await applyParsedResult(manualSlot, manualText.trim(), parsed);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setProcessingSlot(null);
+    }
+  };
+
+  const openManualInput = (slot) => {
+    const img = images.find((i) => i.slot === slot);
+    setManualSlot(slot);
+    setManualText(img?.ocr_text || '');
+    setError('');
+    setMessage('');
   };
 
   const handleDeleteSlot = async (slot) => {
@@ -121,6 +177,10 @@ export default function AllergyLunch() {
     setProcessingSlot(slot);
     setError('');
     setMessage('');
+    if (manualSlot === slot) {
+      setManualSlot(null);
+      setManualText('');
+    }
 
     try {
       const data = await allergyLunch.deleteImage(yearMonth, slot);
@@ -200,6 +260,14 @@ export default function AllergyLunch() {
                     }}
                   />
                 </label>
+                <button
+                  type="button"
+                  className="capture-manual-btn"
+                  disabled={!!processingSlot}
+                  onClick={() => openManualInput(slot)}
+                >
+                  テキストを手入力
+                </button>
                 {img?.has_data && (
                   <button
                     type="button"
@@ -214,6 +282,40 @@ export default function AllergyLunch() {
             );
           })}
         </div>
+
+        {manualSlot && (
+          <div className="manual-ocr-panel">
+            <h4>写真 {manualSlot} の読み取りテキスト</h4>
+            <p className="settings-desc">
+              OCR結果を確認・修正して再解析できます。行の先頭に「3 火」のように日付と曜日がある形式が読み取りやすいです。
+            </p>
+            <textarea
+              className="manual-ocr-textarea"
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              rows={10}
+              placeholder={'例:\n3 火\nごはん / 味噌汁 / ハンバーグ\n4 水\n...'}
+            />
+            <div className="manual-ocr-actions">
+              <button
+                type="button"
+                className="capture-btn manual-parse-btn"
+                disabled={!!processingSlot || !manualText.trim()}
+                onClick={handleManualParse}
+              >
+                このテキストから再解析
+              </button>
+              <button
+                type="button"
+                className="capture-manual-btn"
+                disabled={!!processingSlot}
+                onClick={() => { setManualSlot(null); setManualText(''); setError(''); }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        )}
 
         {message && <p className="success-msg">{message}</p>}
         {error && <p className="error-msg">{error}</p>}
