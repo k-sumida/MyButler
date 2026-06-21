@@ -1,12 +1,61 @@
+let visionClient = null;
+
+function parseCredentials() {
+  const raw = process.env.GOOGLE_CLOUD_VISION_CREDENTIALS;
+  if (!raw) return null;
+  try {
+    const credentials = JSON.parse(raw);
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    }
+    return credentials;
+  } catch {
+    throw new Error('GOOGLE_CLOUD_VISION_CREDENTIALS のJSON形式が不正です');
+  }
+}
+
+function getVisionClient() {
+  if (visionClient) return visionClient;
+  const credentials = parseCredentials();
+  if (!credentials) return null;
+
+  // eslint-disable-next-line global-require
+  const vision = require('@google-cloud/vision');
+  visionClient = new vision.ImageAnnotatorClient({ credentials });
+  return visionClient;
+}
+
+function extractBase64(imageDataUrl) {
+  const match = String(imageDataUrl).match(/^data:image\/\w+;base64,(.+)$/);
+  return match ? match[1] : imageDataUrl;
+}
+
 /**
- * OCR.space API（無料枠あり）で日本語OCR
- * https://ocr.space/ocrapi で無料APIキーを取得
+ * Google Cloud Vision API（日本語OCRに強い）
+ * DOCUMENT_TEXT_DETECTION で表・文書向けに読み取り
+ */
+async function ocrWithGoogleVision(imageDataUrl) {
+  const client = getVisionClient();
+  if (!client) return null;
+
+  const content = extractBase64(imageDataUrl);
+  const [result] = await client.documentTextDetection({
+    image: { content },
+    imageContext: { languageHints: ['ja'] },
+  });
+
+  const text = result.fullTextAnnotation?.text?.trim() || '';
+  if (!text) return null;
+
+  return { method: 'google-vision', text };
+}
+
+/**
+ * OCR.space API（無料枠あり・フォールバック）
  */
 async function ocrWithOcrSpace(imageDataUrl) {
   const apiKey = process.env.OCR_SPACE_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
+  if (!apiKey) return null;
 
   const form = new URLSearchParams();
   form.append('apikey', apiKey);
@@ -43,4 +92,18 @@ async function ocrWithOcrSpace(imageDataUrl) {
   return text ? { method: 'ocr-space', text } : null;
 }
 
-module.exports = { ocrWithOcrSpace };
+/**
+ * サーバー側OCR（Google Vision → OCR.space の順で試行）
+ */
+async function recognizeMenuImage(imageDataUrl) {
+  const visionResult = await ocrWithGoogleVision(imageDataUrl);
+  if (visionResult) return visionResult;
+
+  return ocrWithOcrSpace(imageDataUrl);
+}
+
+module.exports = {
+  recognizeMenuImage,
+  ocrWithGoogleVision,
+  ocrWithOcrSpace,
+};

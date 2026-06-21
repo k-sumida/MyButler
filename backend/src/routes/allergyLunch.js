@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { authMiddleware } = require('../middleware/auth');
-const { ocrWithOcrSpace } = require('../allergyLunchOcr');
+const { recognizeMenuImage } = require('../allergyLunchOcr');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -90,10 +90,10 @@ router.post('/ocr', async (req, res) => {
   }
 
   try {
-    const result = await ocrWithOcrSpace(image_data_url);
+    const result = await recognizeMenuImage(image_data_url);
     if (!result) {
       return res.status(503).json({
-        error: 'OCR_SPACE_API_KEY が未設定です。Vercelの環境変数に設定するか、ブラウザ内OCRを使用してください。',
+        error: 'OCR API が未設定です。GOOGLE_CLOUD_VISION_CREDENTIALS を Vercel に設定するか、ブラウザ内OCRを使用してください。',
         fallback: true,
       });
     }

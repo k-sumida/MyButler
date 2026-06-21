@@ -37,7 +37,7 @@ async function recognizeImageText(file, onProgress) {
     const serverResult = await allergyLunch.ocr(variants[0]);
     if (serverResult?.text?.trim()) {
       if (onProgress) onProgress(100);
-      return { text: serverResult.text.trim(), method: serverResult.method || 'ocr-space' };
+      return { text: serverResult.text.trim(), method: serverResult.method || 'server' };
     }
   } catch (err) {
     if (!err.fallback) {
