@@ -68,20 +68,20 @@ export const allergyLunch = {
     }),
   deleteImage: (yearMonth, slot) =>
     request(`/allergy-lunch/${yearMonth}/images/${slot}`, { method: 'DELETE' }),
-  ocr: async (imageDataUrl) => {
+  ocr: async (imageDataUrl, yearMonth) => {
     const headers = { 'Content-Type': 'application/json' };
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     let res;
     try {
       res = await fetch(`${API_BASE}/allergy-lunch/ocr`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ image_data_url: imageDataUrl }),
+        body: JSON.stringify({ image_data_url: imageDataUrl, year_month: yearMonth }),
         signal: controller.signal,
       });
     } catch (error) {

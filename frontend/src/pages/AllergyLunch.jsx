@@ -1,26 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { allergyLunch } from '../api';
 import {
-  STANDARD_ALLERGENS,
   currentYearMonth,
   formatYearMonthLabel,
-  getHighlightAllergens,
-  isDayHighlighted,
+  hasMenuTables,
   mergeMenuData,
+  normalizeMenuData,
   parseMenuOcrText,
 } from '../utils/allergyLunchParser';
 import { buildOcrVariants, runOcrFromFile } from '../utils/ocr';
 import './AllergyLunch.css';
 
-const EMPTY_MENU = { days: [], legend_allergens: [] };
-
-function formatMenuItems(menu) {
-  if (!menu) return [];
-  return String(menu)
-    .split(/[/／\n]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+const EMPTY_MENU = { tables: [] };
 
 function buildMergedFromMonthData(monthData) {
   const parsedParts = (monthData.images || [])
@@ -30,14 +21,25 @@ function buildMergedFromMonthData(monthData) {
   return parsedParts.length ? mergeMenuData(parsedParts) : EMPTY_MENU;
 }
 
-async function recognizeImageText(file, onProgress) {
+async function recognizeImage(file, yearMonth, onProgress) {
   const variants = await buildOcrVariants(file);
 
   try {
-    const serverResult = await allergyLunch.ocr(variants[0]);
-    if (serverResult?.text?.trim()) {
+    const serverResult = await allergyLunch.ocr(variants[0], yearMonth);
+    if (serverResult?.parsed_data?.tables?.length) {
       if (onProgress) onProgress(100);
-      return { text: serverResult.text.trim(), method: serverResult.method || 'server' };
+      return {
+        text: serverResult.text || '',
+        parsed: serverResult.parsed_data,
+        method: serverResult.method || 'server',
+      };
+    }
+    if (serverResult?.text?.trim()) {
+      const parsed = parseMenuOcrText(serverResult.text, yearMonth);
+      if (parsed.tables?.length) {
+        if (onProgress) onProgress(100);
+        return { text: serverResult.text.trim(), parsed, method: serverResult.method || 'server' };
+      }
     }
   } catch (err) {
     if (!err.fallback) {
@@ -46,13 +48,13 @@ async function recognizeImageText(file, onProgress) {
   }
 
   const text = await runOcrFromFile(file, onProgress);
-  return { text, method: 'tesseract' };
+  const parsed = parseMenuOcrText(text, yearMonth);
+  return { text, parsed, method: 'tesseract' };
 }
 
 export default function AllergyLunch() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
   const [menuData, setMenuData] = useState(EMPTY_MENU);
-  const [userAllergens, setUserAllergens] = useState([]);
   const [images, setImages] = useState([
     { slot: 1, has_data: false },
     { slot: 2, has_data: false },
@@ -65,20 +67,14 @@ export default function AllergyLunch() {
   const [manualSlot, setManualSlot] = useState(null);
   const [manualText, setManualText] = useState('');
 
-  const highlightAllergens = useMemo(
-    () => getHighlightAllergens(menuData, userAllergens),
-    [menuData, userAllergens],
-  );
+  const displayMenu = normalizeMenuData(menuData);
 
   const loadMonth = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await allergyLunch.get(yearMonth);
-      setMenuData(data.menu_data || EMPTY_MENU);
-      setUserAllergens(data.user_allergens?.length
-        ? data.user_allergens
-        : data.menu_data?.legend_allergens || []);
+      setMenuData(normalizeMenuData(data.menu_data));
       setImages(data.images || [{ slot: 1, has_data: false }, { slot: 2, has_data: false }]);
     } catch (err) {
       setError(err.message);
@@ -91,9 +87,9 @@ export default function AllergyLunch() {
     loadMonth();
   }, [loadMonth]);
 
-  const saveMonth = async (nextMenu, nextAllergens = userAllergens) => {
+  const saveMonth = async (nextMenu) => {
     await allergyLunch.save(yearMonth, {
-      user_allergens: nextAllergens,
+      user_allergens: [],
       menu_data: nextMenu,
     });
   };
@@ -103,12 +99,12 @@ export default function AllergyLunch() {
 
     const monthData = await allergyLunch.get(yearMonth);
     const merged = buildMergedFromMonthData(monthData);
-    const nextAllergens = userAllergens.length ? userAllergens : merged.legend_allergens;
 
     setMenuData(merged);
-    setUserAllergens(nextAllergens);
-    await saveMonth(merged, nextAllergens);
-    setMessage(`写真${slot}を読み取りました（合計${merged.days.length}日分）`);
+    await saveMonth(merged);
+
+    const rowCount = merged.tables.reduce((sum, t) => sum + (t.rows?.length || 0), 0);
+    setMessage(`写真${slot}を読み取りました（${rowCount}行）`);
     setManualSlot(null);
     setManualText('');
     await loadMonth();
@@ -123,13 +119,12 @@ export default function AllergyLunch() {
     setManualSlot(null);
 
     try {
-      const { text: ocrText } = await recognizeImageText(file, setOcrProgress);
-      const parsed = parseMenuOcrText(ocrText, yearMonth);
+      const { text: ocrText, parsed } = await recognizeImage(file, yearMonth, setOcrProgress);
 
-      if (!parsed?.days?.length) {
+      if (!parsed?.tables?.length) {
         setManualSlot(slot);
         setManualText(ocrText);
-        setError('自動解析できませんでした。下のテキストを確認・修正して「再解析」を押してください。');
+        setError('表形式に整形できませんでした。下のテキストを確認・修正して「再解析」を押してください。');
         return;
       }
 
@@ -150,7 +145,7 @@ export default function AllergyLunch() {
 
     try {
       const parsed = parseMenuOcrText(manualText, yearMonth);
-      if (!parsed?.days?.length) {
+      if (!parsed?.tables?.length) {
         throw new Error('献立を解析できませんでした。「3 火」のように日付と曜日が含まれているか確認してください。');
       }
       await applyParsedResult(manualSlot, manualText.trim(), parsed);
@@ -184,17 +179,10 @@ export default function AllergyLunch() {
 
     try {
       const data = await allergyLunch.deleteImage(yearMonth, slot);
-      const merged = data.menu_data || EMPTY_MENU;
+      const merged = normalizeMenuData(data.menu_data);
       setMenuData(merged);
       setImages(data.images || [{ slot: 1, has_data: false }, { slot: 2, has_data: false }]);
-      if (!merged.legend_allergens?.length) {
-        setUserAllergens([]);
-        await saveMonth(merged, []);
-      } else {
-        const nextAllergens = userAllergens.filter((a) => merged.legend_allergens.includes(a));
-        setUserAllergens(nextAllergens);
-        await saveMonth(merged, nextAllergens);
-      }
+      await saveMonth(merged);
       setMessage(`写真${slot}の読み取り結果を削除しました`);
     } catch (err) {
       setError(err.message || '削除に失敗しました');
@@ -203,26 +191,11 @@ export default function AllergyLunch() {
     }
   };
 
-  const toggleAllergen = async (allergen) => {
-    const next = userAllergens.includes(allergen)
-      ? userAllergens.filter((a) => a !== allergen)
-      : [...userAllergens, allergen];
-    setUserAllergens(next);
-    try {
-      await saveMonth(menuData, next);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const legendAllergens = menuData.legend_allergens || [];
-  const allergenOptions = [...new Set([...legendAllergens, ...STANDARD_ALLERGENS])];
-
   return (
     <div className="allergy-lunch">
       <div className="page-header">
         <h2>アレルギー給食管理</h2>
-        <p>献立表を2枚（前半・後半）撮影してOCRで読み取り、アレルギー物質を強調表示します</p>
+        <p>献立表を2枚（前半・後半）撮影して読み取り、表形式で表示します</p>
       </div>
 
       <div className="card allergy-controls">
@@ -321,75 +294,41 @@ export default function AllergyLunch() {
         {error && <p className="error-msg">{error}</p>}
       </div>
 
-      {legendAllergens.length > 0 && (
-        <div className="card allergy-legend-panel">
-          <h3>読み取ったアレルギー物質</h3>
-          <p className="settings-desc">強調表示する物質を選択してください</p>
-          <div className="allergen-chips">
-            {allergenOptions.filter((a) => legendAllergens.includes(a)).map((allergen) => (
-              <button
-                key={allergen}
-                type="button"
-                className={`allergen-chip ${userAllergens.includes(allergen) ? 'active' : ''}`}
-                onClick={() => toggleAllergen(allergen)}
-              >
-                {allergen}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {loading ? (
         <p className="loading-text">読み込み中...</p>
-      ) : menuData.days?.length > 0 ? (
-        <div className="card menu-table-wrap">
-          <h3>{formatYearMonthLabel(yearMonth)}の献立</h3>
-          <div className="menu-table-scroll">
-            <table className="menu-table">
-              <thead>
-                <tr>
-                  <th>日</th>
-                  <th>曜</th>
-                  <th>献立</th>
-                  <th>アレルギー</th>
-                </tr>
-              </thead>
-              <tbody>
-                {menuData.days.map((day) => {
-                  const highlighted = isDayHighlighted(day, highlightAllergens);
-                  return (
-                    <tr key={day.date || day.day} className={highlighted ? 'row-alert' : ''}>
-                      <td className={highlighted ? 'cell-alert' : ''}>{day.day}</td>
-                      <td>{day.weekday || '-'}</td>
-                      <td className="menu-cell">
-                        {formatMenuItems(day.menu).length > 0 ? (
-                          formatMenuItems(day.menu).map((item, idx) => (
-                            <span key={idx} className="menu-item">{item}</span>
-                          ))
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td>
-                        <div className="allergen-tags">
-                          {(day.allergens || []).map((a) => (
-                            <span
-                              key={a}
-                              className={`allergen-tag ${highlightAllergens.includes(a) ? 'tag-alert' : ''}`}
-                            >
-                              {a}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
+      ) : hasMenuTables(displayMenu) ? (
+        displayMenu.tables.map((table, tableIdx) => (
+          <div key={tableIdx} className="card menu-table-wrap">
+            <h3>
+              {formatYearMonthLabel(yearMonth)}の献立
+              {displayMenu.tables.length > 1 ? `（${tableIdx + 1}）` : ''}
+            </h3>
+            <div className="menu-table-scroll">
+              <table className="menu-table">
+                {table.headers?.length > 0 && (
+                  <thead>
+                    <tr>
+                      {table.headers.map((header, idx) => (
+                        <th key={idx}>{header || `列${idx + 1}`}</th>
+                      ))}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                )}
+                <tbody>
+                  {table.rows.map((row, rowIdx) => (
+                    <tr key={rowIdx}>
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} className={cellIdx >= 2 ? 'menu-cell' : ''}>
+                          {cell || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        ))
       ) : (
         <div className="empty-state card">
           <span className="empty-state-icon">🍱</span>

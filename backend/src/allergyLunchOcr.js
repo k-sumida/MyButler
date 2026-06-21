@@ -1,3 +1,6 @@
+const { extractTablesWithDocumentAi } = require('./allergyLunchDocumentAi');
+const { textToTableFallback } = require('./allergyLunchParser');
+
 let visionClient = null;
 
 function parseCredentials() {
@@ -30,10 +33,6 @@ function extractBase64(imageDataUrl) {
   return match ? match[1] : imageDataUrl;
 }
 
-/**
- * Google Cloud Vision API（日本語OCRに強い）
- * DOCUMENT_TEXT_DETECTION で表・文書向けに読み取り
- */
 async function ocrWithGoogleVision(imageDataUrl) {
   const client = getVisionClient();
   if (!client) return null;
@@ -50,9 +49,6 @@ async function ocrWithGoogleVision(imageDataUrl) {
   return { method: 'google-vision', text };
 }
 
-/**
- * OCR.space API（無料枠あり・フォールバック）
- */
 async function ocrWithOcrSpace(imageDataUrl) {
   const apiKey = process.env.OCR_SPACE_API_KEY;
   if (!apiKey) return null;
@@ -93,13 +89,43 @@ async function ocrWithOcrSpace(imageDataUrl) {
 }
 
 /**
- * サーバー側OCR（Google Vision → OCR.space の順で試行）
+ * Cloud Vision で読み取り → Document AI で表形式に整形
  */
-async function recognizeMenuImage(imageDataUrl) {
+async function recognizeMenuImage(imageDataUrl, yearMonth) {
   const visionResult = await ocrWithGoogleVision(imageDataUrl);
-  if (visionResult) return visionResult;
+  const ocrResult = visionResult || await ocrWithOcrSpace(imageDataUrl);
 
-  return ocrWithOcrSpace(imageDataUrl);
+  if (!ocrResult?.text) {
+    return null;
+  }
+
+  const { text } = ocrResult;
+  let tables = [];
+  let method = ocrResult.method;
+
+  try {
+    const docResult = await extractTablesWithDocumentAi(imageDataUrl);
+    if (docResult?.tables?.length) {
+      tables = docResult.tables;
+      method = `${ocrResult.method}+document-ai`;
+    }
+  } catch (err) {
+    console.warn('Document AI table extraction failed:', err.message);
+  }
+
+  if (!tables.length && yearMonth) {
+    const fallback = textToTableFallback(text, yearMonth);
+    if (fallback?.tables?.length) {
+      tables = fallback.tables;
+      method = `${ocrResult.method}+text-fallback`;
+    }
+  }
+
+  return {
+    method,
+    text,
+    parsed_data: { tables },
+  };
 }
 
 module.exports = {

@@ -66,53 +66,11 @@ function daysToTable(days) {
   };
 }
 
-/** OCRテキストから表形式データを生成（手入力・再解析用） */
-export function parseMenuOcrText(ocrText, yearMonth) {
+function textToTableFallback(ocrText, yearMonth) {
   const normalized = normalizeText(ocrText);
   const days = parseDayBlocks(normalized, yearMonth);
   if (!days.length) return { tables: [] };
   return { tables: [daysToTable(days)] };
 }
 
-export function mergeMenuData(parts) {
-  const tables = [];
-  const sortedParts = [...parts]
-    .filter(Boolean)
-    .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
-
-  for (const part of sortedParts) {
-    if (part.tables?.length) {
-      for (const table of part.tables) {
-        if (table.rows?.length) tables.push(table);
-      }
-      continue;
-    }
-    if (part.days?.length) {
-      tables.push(daysToTable(part.days));
-    }
-  }
-
-  return { tables };
-}
-
-export function formatYearMonthLabel(yearMonth) {
-  const [y, m] = yearMonth.split('-');
-  return `${y}年${Number(m)}月`;
-}
-
-export function currentYearMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-export function hasMenuTables(menuData) {
-  return (menuData?.tables || []).some((t) => t.rows?.length > 0);
-}
-
-/** 旧形式（days）を tables に変換して表示用に正規化 */
-export function normalizeMenuData(menuData) {
-  if (!menuData) return { tables: [] };
-  if (menuData.tables?.length) return menuData;
-  if (menuData.days?.length) return { tables: [daysToTable(menuData.days)] };
-  return { tables: [] };
-}
+module.exports = { textToTableFallback, daysToTable };

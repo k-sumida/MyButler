@@ -22,7 +22,7 @@ function serializeMonth(row, images = []) {
   return {
     year_month: row.year_month,
     user_allergens: parseJson(row.user_allergens, []),
-    menu_data: parseJson(row.menu_data, { days: [], legend_allergens: [] }),
+    menu_data: parseJson(row.menu_data, { tables: [] }),
     images: images.map((img) => ({
       slot: img.slot,
       ocr_text: img.ocr_text || '',
@@ -49,28 +49,29 @@ async function getMonthImages(monthId) {
 }
 
 function mergeMenuDataFromImages(images) {
-  const legendSet = new Set();
-  const dayMap = new Map();
+  const tables = [];
   const sorted = [...images]
     .map((img) => ({
       slot: img.slot,
       ...(parseJson(img.parsed_data, null) || {}),
     }))
-    .filter((part) => part && (part.days?.length || part.legend_allergens?.length))
+    .filter(Boolean)
     .sort((a, b) => a.slot - b.slot);
 
   for (const part of sorted) {
-    (part.legend_allergens || []).forEach((a) => legendSet.add(a));
-    (part.days || []).forEach((day) => {
-      const key = day.date || String(day.day);
-      dayMap.set(key, { ...day });
-    });
+    if (part.tables?.length) {
+      for (const table of part.tables) {
+        if (table.rows?.length) tables.push(table);
+      }
+      continue;
+    }
+    if (part.days?.length) {
+      const { daysToTable } = require('../allergyLunchParser');
+      tables.push(daysToTable(part.days));
+    }
   }
 
-  return {
-    days: [...dayMap.values()].sort((a, b) => a.day - b.day),
-    legend_allergens: [...legendSet],
-  };
+  return { tables };
 }
 
 router.get('/months', async (req, res) => {
@@ -84,13 +85,13 @@ router.get('/months', async (req, res) => {
 
 router.post('/ocr', async (req, res) => {
   await db.ready;
-  const { image_data_url } = req.body;
+  const { image_data_url, year_month } = req.body;
   if (!image_data_url) {
     return res.status(400).json({ error: 'image_data_url が必要です' });
   }
 
   try {
-    const result = await recognizeMenuImage(image_data_url);
+    const result = await recognizeMenuImage(image_data_url, year_month);
     if (!result) {
       return res.status(503).json({
         error: 'OCR API が未設定です。GOOGLE_CLOUD_VISION_CREDENTIALS を Vercel に設定するか、ブラウザ内OCRを使用してください。',
@@ -116,7 +117,7 @@ router.get('/:yearMonth', async (req, res) => {
     return res.json({
       year_month: yearMonth,
       user_allergens: [],
-      menu_data: { days: [], legend_allergens: [] },
+      menu_data: { tables: [] },
       images: [{ slot: 1, ocr_text: '', has_data: false }, { slot: 2, ocr_text: '', has_data: false }],
     });
   }
@@ -134,7 +135,7 @@ router.put('/:yearMonth', async (req, res) => {
 
   const { user_allergens, menu_data } = req.body;
   const allergensJson = JSON.stringify(user_allergens || []);
-  const menuJson = JSON.stringify(menu_data || { days: [], legend_allergens: [] });
+  const menuJson = JSON.stringify(menu_data || { tables: [] });
   const now = new Date().toISOString();
 
   let row = await getMonthRecord(req.user.id, yearMonth);
@@ -178,7 +179,7 @@ router.put('/:yearMonth/images/:slot', async (req, res) => {
     const result = await db.run(
       `INSERT INTO allergy_lunch_months (user_id, year_month, user_allergens, menu_data)
        VALUES (?, ?, ?, ?)`,
-      [req.user.id, yearMonth, '[]', '{"days":[],"legend_allergens":[]}'],
+      [req.user.id, yearMonth, '[]', '{"tables":[]}'],
     );
     row = await db.get('SELECT * FROM allergy_lunch_months WHERE id = ?', [result.lastInsertRowid]);
   }
